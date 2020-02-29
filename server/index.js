@@ -13,7 +13,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('animate', (msg) => {
-    io.emit('animate', {id: socket.id, name: msg.name});
+    io.emit('animate', {id: socket.id, animeId: msg.animeId});
   });
 
   socket.on('hit', (msg) => {

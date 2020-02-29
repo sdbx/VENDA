@@ -74,6 +74,14 @@ public class SocketManager : MonoBehaviour
             player.GetDmg(dmg);
             Debug.Log("맞앗어");
         });
+
+        socket.On("animate",(string data)=>{
+            string id_ = (string)JObject.Parse(data)["id"];
+            int animeId = (int)JObject.Parse(data)["animeId"];
+            if (id_ != id) {
+                characterList[id_].PlayAnimation(animeId);
+            }
+        });
     }
 
     void Update()

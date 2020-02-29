@@ -68,11 +68,24 @@ public class Character : MonoBehaviour
         //enum 추가, 타입별 애니메이션 재생 -> _characterAnimation.~~~
         switch (aniType)
         {
+            case 0:
+                _characterAnimation.AttackRight();
+                break;
             case 1:
+                _characterAnimation.AttackLeft();
+                break;
+            case 2:
+                _characterAnimation.AttackDown();
+                break;
+            case 3:
+                _characterAnimation.AttackUp();
                 break;
         }
     }
-
+    
+    public void SendAnime(int aniType) {
+        _socketManager.socket.EmitJson("animate", JsonConvert.SerializeObject(new { id = _id, animeId = aniType }));
+    }
 
     //내가 공격한거 - 연산까지
     //상대가 공격한거 - 모션만
@@ -83,9 +96,10 @@ public class Character : MonoBehaviour
         {   
             _coolTime = 0;
             AttackEnemy(_rightAttackCollision);
-    
+            SendAnime(0);
+            _characterAnimation.AttackRight();
         }
-        _characterAnimation.AttackRight();
+       
     }
     public void AttackLeft()
     {
@@ -93,8 +107,10 @@ public class Character : MonoBehaviour
         {   
             _coolTime = 0;
             AttackEnemy(_leftAttackCollision);
+            SendAnime(1);
+            _characterAnimation.AttackLeft();
         }
-        _characterAnimation.AttackLeft();
+        
     }
     public void AttackUp()
     {
@@ -102,8 +118,10 @@ public class Character : MonoBehaviour
         {   
             _coolTime = 0;
             AttackEnemy(_upAttackCollision);
+            SendAnime(3);
+            _characterAnimation.AttackUp();
         }
-        _characterAnimation.AttackUp();
+        
     }
     public void AttackDown()
     {
@@ -111,8 +129,9 @@ public class Character : MonoBehaviour
         {   
             _coolTime = 0;
             AttackEnemy(_downAttackCollision);
+            SendAnime(2);
+            _characterAnimation.AttackDown();
         }
-        _characterAnimation.AttackDown();
     }
 
     public void AttackEnemy(AttackCollision attackCollision)
@@ -143,7 +162,7 @@ public class Character : MonoBehaviour
     public CharacterData GetData()
     {
         var pos = transform.position;
-        return new CharacterData(_id, _hp, pos.x, pos.y);
+        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y);
     }
 
     public void SetData(CharacterData characterData)
@@ -151,21 +170,25 @@ public class Character : MonoBehaviour
         _id = characterData.id;
         SetPos(characterData.x, characterData.y);
         _hp = characterData.hp;
+        _maxHp = characterData.maxhp;
+        hpbar.setValue((float)_hp/(float)_maxHp);
     }
 }
 
 
 public struct CharacterData
 {
-    public CharacterData(string id, int hp, float x, float y)
+    public CharacterData(string id, int hp, int maxhp, float x, float y)
     {
         this.id = id;
         this.hp = hp;
+        this.maxhp = maxhp;
         this.x = x;
         this.y = y;
     }
     public string id;
     public int hp;
+    public int maxhp;
     public float x;
     public float y;
 }

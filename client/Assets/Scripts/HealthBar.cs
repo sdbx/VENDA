@@ -6,16 +6,14 @@ public class HealthBar : MonoBehaviour
 {
     [SerializeField]
     GameObject _bar;
-    float maxScale;
 
     private void Start()
     {
-        maxScale = _bar.transform.localScale.x;
     }
 
     public void setValue(float v)
     {
         var currentScale =  _bar.transform.localScale; 
-        _bar.transform.localScale = new Vector3(maxScale*v,currentScale.y,currentScale.z);
+        _bar.transform.localScale = new Vector3(v,currentScale.y,currentScale.z);
     }
 }

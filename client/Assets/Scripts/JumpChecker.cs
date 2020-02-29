@@ -9,7 +9,7 @@ public class JumpChecker : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        if (other.gameObject.tag == "Ground")
+        if (other.gameObject.tag == "Ground" || other.gameObject.tag == "Enemy")
         {
             isGrounded = true;
         }
@@ -17,7 +17,7 @@ public class JumpChecker : MonoBehaviour
     
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (other.gameObject.tag == "Ground")
+        if (other.gameObject.tag == "Ground" || other.gameObject.tag == "Enemy")
         {
             isGrounded = false;
         }
