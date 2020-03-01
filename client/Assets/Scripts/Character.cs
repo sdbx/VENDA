@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
+using System;
 
 public class Character : MonoBehaviour
 {
@@ -35,16 +36,22 @@ public class Character : MonoBehaviour
     [SerializeField]
     private float _coolTime = 0;
 
+    private float _speed = 0;
+
+    private bool _defense = false;
+    private bool _facingRight = false;
+
     private Rigidbody2D _rigidbody;
     private Transform _transform;
-    private CharacterAnimation _characterAnimation;
+
+    private Animator _animator;
 
 
     void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         _transform = GetComponent<Transform>();
-        _characterAnimation = GetComponent<CharacterAnimation>();
+        _animator = GetComponent<Animator>();
     }
 
     void Update()
@@ -54,6 +61,16 @@ public class Character : MonoBehaviour
         {
             _coolTime += Time.deltaTime;
         }
+        
+        if (isMe) {
+            if (Math.Abs(_rigidbody.velocity.x) >= 0.1)
+                _facingRight = _rigidbody.velocity.x > 0;
+            _speed = Math.Abs(_rigidbody.velocity.x);
+        }
+        _animator.SetFloat("speed", _speed);
+        var localScale = transform.localScale;
+        localScale.x = _facingRight ? 0.25f : -0.25f;
+        transform.localScale = localScale;
     }
 
     //서버에서 좌표 적용
@@ -69,16 +86,19 @@ public class Character : MonoBehaviour
         switch (aniType)
         {
             case 0:
-                _characterAnimation.AttackRight();
+                _animator.SetTrigger("front_attack");
                 break;
             case 1:
-                _characterAnimation.AttackLeft();
+                _animator.SetTrigger("back_attack");
                 break;
             case 2:
-                _characterAnimation.AttackDown();
+                _animator.SetTrigger("down_attack");
                 break;
             case 3:
-                _characterAnimation.AttackUp();
+                _animator.SetTrigger("up_attack");
+                break;
+            case 4:
+                _animator.SetTrigger("defense");
                 break;
         }
     }
@@ -95,31 +115,41 @@ public class Character : MonoBehaviour
         if (isMe && _coolTime>=_maxCooltime)
         {   
             _coolTime = 0;
-            AttackEnemy(_rightAttackCollision);
-            SendAnime(0);
-            _characterAnimation.AttackRight();
+            if (_facingRight) {
+                _animator.SetTrigger("front_attack");
+                SendAnime(0);
+            } else {
+                _animator.SetTrigger("back_attack");
+                SendAnime(1);
+            }
+            // _characterAnimation.AttackRight();
         }
-       
     }
     public void AttackLeft()
     {
         if (isMe && _coolTime>=_maxCooltime)
         {   
             _coolTime = 0;
-            AttackEnemy(_leftAttackCollision);
             SendAnime(1);
-            _characterAnimation.AttackLeft();
+            if (!_facingRight) {
+                _animator.SetTrigger("front_attack");
+                SendAnime(0);
+            } else {
+                _animator.SetTrigger("back_attack");
+                SendAnime(1);
+            }
+            // _characterAnimation.AttackLeft();
         }
-        
     }
+    
     public void AttackUp()
     {
         if (isMe && _coolTime>=_maxCooltime)
         {   
             _coolTime = 0;
-            AttackEnemy(_upAttackCollision);
+            _animator.SetTrigger("up_attack");
             SendAnime(3);
-            _characterAnimation.AttackUp();
+            // _characterAnimation.AttackUp();
         }
         
     }
@@ -128,11 +158,59 @@ public class Character : MonoBehaviour
         if (isMe && _coolTime>=_maxCooltime)
         {   
             _coolTime = 0;
-            AttackEnemy(_downAttackCollision);
+            _animator.SetTrigger("down_attack");
             SendAnime(2);
-            _characterAnimation.AttackDown();
+            // _characterAnimation.AttackDown();
         }
     }
+
+    public void FrontAttack()
+    {
+        if (isMe) {
+            AttackEnemy(_rightAttackCollision);
+        }
+    }
+
+    public void BackAttack()
+    {
+        if (isMe) {
+            AttackEnemy(_leftAttackCollision);
+        }
+    }
+
+    public void DownAttack()
+    {
+        if (isMe) {
+            AttackEnemy(_downAttackCollision);
+        }
+    }
+
+    public void UpAttack()
+    {
+        if (isMe) {
+            AttackEnemy(_upAttackCollision);
+        }
+    }
+
+    public void Defense()
+    {
+         if (isMe && _coolTime>=_maxCooltime)
+        {   
+            _coolTime = 0;
+            _animator.SetTrigger("defense");
+            SendAnime(4);
+            _defense = true;
+            // _characterAnimation.AttackUp();
+        }
+    }
+
+    public void DefenseExit()
+    {
+        if (isMe) {
+            _defense = false;
+        }
+    }
+
 
     public void AttackEnemy(AttackCollision attackCollision)
     {
@@ -140,7 +218,12 @@ public class Character : MonoBehaviour
         foreach (var cha in chars)
         {
             Debug.Log(cha._id);
-            _socketManager.socket.EmitJson("hit", JsonConvert.SerializeObject(new { target = cha._id, dmg = 10 }));
+            if (_socketManager.characterList[cha._id]._defense) {
+                _animator.SetTrigger("exit_attack");
+                _coolTime = _maxCooltime * 3;
+            } else {
+                _socketManager.socket.EmitJson("hit", JsonConvert.SerializeObject(new { target = cha._id, dmg = 30 }));
+            } 
         }
     }
 
@@ -162,7 +245,7 @@ public class Character : MonoBehaviour
     public CharacterData GetData()
     {
         var pos = transform.position;
-        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y);
+        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y, _facingRight, _speed, _defense);
     }
 
     public void SetData(CharacterData characterData)
@@ -172,23 +255,32 @@ public class Character : MonoBehaviour
         _hp = characterData.hp;
         _maxHp = characterData.maxhp;
         hpbar.setValue((float)_hp/(float)_maxHp);
+        _speed = characterData.speed;
+        _facingRight = characterData.facingRight;
+        _defense = characterData.defense;
     }
 }
 
 
 public struct CharacterData
 {
-    public CharacterData(string id, int hp, int maxhp, float x, float y)
+    public CharacterData(string id, int hp, int maxhp, float x, float y, bool facingRight, float speed, bool defense)
     {
         this.id = id;
         this.hp = hp;
         this.maxhp = maxhp;
         this.x = x;
         this.y = y;
+        this.facingRight = facingRight;
+        this.speed = speed;
+        this.defense = defense;
     }
     public string id;
     public int hp;
     public int maxhp;
     public float x;
     public float y;
+    public bool facingRight;
+    public float speed;
+    public bool defense;
 }

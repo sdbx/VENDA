@@ -16,13 +16,13 @@ public class SocketManager : MonoBehaviour
     private string serverUrl = "http://59.11.136.225:5353/";
     public Socket socket;
     private string id;
-    private Dictionary<string,Character> characterList = new Dictionary<string, Character>();
+    public Dictionary<string,Character> characterList = new Dictionary<string, Character>();
 
 
 
     void Start()
     {
-        JObject d = JObject.Parse("{}");
+        Application.targetFrameRate = 60;
         socket = Socket.Connect(serverUrl);
 
 
@@ -81,6 +81,11 @@ public class SocketManager : MonoBehaviour
             if (id_ != id) {
                 characterList[id_].PlayAnimation(animeId);
             }
+        });
+        socket.On("delPlayer",(string data)=>{
+            string id_ = (string)JObject.Parse(data)["id"];
+            Destroy(characterList[id_].gameObject);
+            characterList.Remove(id_);
         });
     }
 
