@@ -127,6 +127,7 @@ public class CharacterController : MonoBehaviour
 
     void Dash(float power, float frontPower)
     {
+        _character.PlayAnimation(5);
         if (_dashPoint > 0) {
             _rigidbody.velocity = new Vector2(frontPower,power);
             _dashPoint -= 1;

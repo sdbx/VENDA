@@ -13,6 +13,10 @@ public class Character : MonoBehaviour
     private SocketManager _socketManager;
     public bool isMe = false;
 
+
+    [SerializeField]
+    private ParticleSystem dashParticle;
+
     //attack collision
     [SerializeField]
     private AttackCollision _rightAttackCollision;
@@ -99,6 +103,9 @@ public class Character : MonoBehaviour
                 break;
             case 4:
                 _animator.SetTrigger("defense");
+                break;
+            case 5:
+                dashParticle.Play();
                 break;
         }
     }
