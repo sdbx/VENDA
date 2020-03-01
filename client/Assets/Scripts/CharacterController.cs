@@ -23,6 +23,10 @@ public class CharacterController : MonoBehaviour
 
     private int _dashPoint = 0;
 
+    private int _xMoveDir = 0;
+    private bool _jump = false;
+
+
     void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
@@ -33,6 +37,37 @@ public class CharacterController : MonoBehaviour
     void Update()
     {
         KeyInput();
+    }
+
+    void FixedUpdate()
+    {
+        if(_xMoveDir!=0)
+        {
+            MoveX(_speed*_xMoveDir);
+            _xMoveDir = 0;
+        }
+        if (_jump)
+        {
+            //Jump
+            if (_groundChecker.isGrounded)
+            {
+                Jump(_jumpPower);
+                _dashPoint = 2;
+                _groundChecker.isGrounded = false;
+            }
+            else
+            {
+                if (Input.GetKey(KeyCode.RightArrow))
+                {
+                    Dash(_dashJumpPower, _dashPower);
+                }
+                else if (Input.GetKey(KeyCode.LeftArrow))
+                {
+                    Dash(_dashJumpPower, -_dashPower);
+                }
+            }
+            _jump = false;
+        }
     }
 
     void KeyInput()
@@ -64,12 +99,12 @@ public class CharacterController : MonoBehaviour
         //char movement
         if (Input.GetKey(KeyCode.RightArrow))
         {
-            MoveX(_speed);
+            _xMoveDir = 1;
         }
         
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            MoveX(-_speed);
+            _xMoveDir = -1;
         }
 
         if (Input.GetKey(KeyCode.DownArrow))
@@ -79,26 +114,11 @@ public class CharacterController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
-            //Jump
-            if(_groundChecker.isGrounded)
-            {
-                Jump(_jumpPower);
-                _dashPoint = 2;
-                _groundChecker.isGrounded = false;
-            } else {
-                if (Input.GetKey(KeyCode.RightArrow)) {
-                    Dash(_dashJumpPower,_dashPower);
-                } else if (Input.GetKey(KeyCode.LeftArrow)) {
-                    Dash(_dashJumpPower,-_dashPower);
-                }
-            }
-
+            _jump = true;
         }
     }
 
-    void FixedUpdate() {
-       
-    }
+
 
     void Jump(float power)
     {
@@ -115,6 +135,13 @@ public class CharacterController : MonoBehaviour
 
     void MoveX(float x)
     {
-        _rigidbody.AddForce(new Vector2(x*Time.deltaTime,0), ForceMode2D.Impulse);
+        if(_groundChecker.isGrounded)
+        {
+            _rigidbody.velocity = new Vector2(x/10,_rigidbody.velocity.y);
+        }
+        else
+        {
+            _rigidbody.AddForce(new Vector2(x*Time.deltaTime,0), ForceMode2D.Impulse);
+        }
     }
 }
