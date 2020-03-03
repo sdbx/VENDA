@@ -87,6 +87,10 @@ public class SocketManager : MonoBehaviour
             Destroy(characterList[id_].gameObject);
             characterList.Remove(id_);
         });
+
+        socket.On("ping",(string data)=>{
+            socket.EmitJson("pong", data);
+        });
     }
 
     void Update()
