@@ -14,11 +14,11 @@ public class SocketManager : MonoBehaviour
     public Character player;
     [SerializeField]
     private string serverUrl = "http://59.11.136.225:5353/";
+    [SerializeField]
+    private MapManager _mapManager;
     public Socket socket;
     private string id;
     public Dictionary<string,Character> characterList = new Dictionary<string, Character>();
-
-
 
     void Start()
     {
@@ -65,23 +65,31 @@ public class SocketManager : MonoBehaviour
 
         socket.On("info", (string data) => {
             id = (string)JObject.Parse(data)["id"];
-            player.setId(id);
+            var name_ = (string)JObject.Parse(data)["name"];
+            var map_ = (string)JObject.Parse(data)["map"];
+            player.setIdAndName(id,name_);
+            
+            player.gameObject.SetActive(true);
+            Debug.Log(map_);
+            _mapManager.SetMap(map_,(0,0));
+            player.GetComponent<Rigidbody2D>().position = _mapManager.GetPlayerSpawnPositions(TileLayer.Obstacle)[0];
+            
         });
-
 
         socket.On("hit",(string data)=>{
             int dmg = (int)JObject.Parse(data)["dmg"];
-            player.GetDmg(dmg);
-            Debug.Log("맞앗어");
+            string hitter = (string)JObject.Parse(data)["id"];
+            player.GetDmg(dmg,hitter);
         });
 
         socket.On("animate",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             int animeId = (int)JObject.Parse(data)["animeId"];
             if (id_ != id) {
-                characterList[id_].PlayAnimation(animeId);
+                characterList[id_].PlayAnimation((aniType)animeId);
             }
         });
+
         socket.On("delPlayer",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             Destroy(characterList[id_].gameObject);
@@ -90,6 +98,13 @@ public class SocketManager : MonoBehaviour
 
         socket.On("ping",(string data)=>{
             socket.EmitJson("pong", data);
+        });
+        
+        socket.On("death",(string data)=>{
+            string id_ = (string)JObject.Parse(data)["id"];
+            string by_ = (string)JObject.Parse(data)["by"];
+            characterList[id_].DGim(id_);
+            characterList.Remove(id_);
         });
     }
 

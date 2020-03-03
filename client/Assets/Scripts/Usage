@@ -1,0 +1,31 @@
+﻿using UnityEngine;
+using UnityEngine.Tilemaps;
+
+public class Usage : MonoBehaviour
+{
+    [SerializeField] private MapManager mapManager = null;
+    [SerializeField] private Tilemap[] tilemaps = null;
+    [SerializeField] private GameObject[] players = null;
+    [SerializeField] private Transform mainCamera = null;
+
+    private string mapCode;
+    private Vector3[] playerSpawnPos;
+
+    private void Awake()
+    {
+
+
+        for (var i = 0; i < playerSpawnPos.Length; i++)
+        {
+            var player = Instantiate(players[i], playerSpawnPos[i], Quaternion.identity);
+            player.GetComponent<SpriteRenderer>().color = new Color(Random.Range(0, 1f), Random.Range(0, 1f), Random.Range(0, 1f));
+            if (i == 0)
+            {
+                player.AddComponent<CharacterMove>().mainCamera = mainCamera;
+            }
+        }
+    }
+}
+        mapCode = Resources.Load<TextAsset>("qzhacdimnn").text;
+        mapManager.SetMap(mapCode, tilemaps, (0, 0));
+        playerSpawnPos = mapManager.GetPlayerSpawnPositions(tilemaps[0], (0, 0, 63, 33));
