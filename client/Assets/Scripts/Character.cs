@@ -52,7 +52,6 @@ public class Character : MonoBehaviour
     private ProgressBar _coolTimeBar;
     private bool _isCooltimeIncreased = false;
 
-
     [SerializeField]
     private CharacterAnimation _characterAnimation;
 
@@ -88,6 +87,8 @@ public class Character : MonoBehaviour
         {
             _cooltime += Time.deltaTime / (_isCooltimeIncreased?3:1) ;
             _coolTimeBar.setValue(_cooltime / _maxCooltime);
+            if (_cooltime >= _maxCooltime)
+                _characterAnimation.PlayCooltimeSound();
         }
         else 
         {

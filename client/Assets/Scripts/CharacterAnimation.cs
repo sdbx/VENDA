@@ -87,6 +87,10 @@ public class CharacterAnimation : MonoBehaviour
     {
         _audioSource.PlayOneShot(_attack,_attackVolume);
     }
+    public void PlayCooltimeSound()
+    {
+        _audioSource.PlayOneShot(_cooltime,_cooltimeVolume);
+    }
 
     //dash
     public void PlayDashHorizontal()
