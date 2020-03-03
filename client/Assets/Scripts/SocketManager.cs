@@ -18,8 +18,6 @@ public class SocketManager : MonoBehaviour
     private string id;
     public Dictionary<string,Character> characterList = new Dictionary<string, Character>();
 
-
-
     void Start()
     {
         Application.targetFrameRate = 60;
@@ -65,26 +63,35 @@ public class SocketManager : MonoBehaviour
 
         socket.On("info", (string data) => {
             id = (string)JObject.Parse(data)["id"];
-            player.setId(id);
+            var name_ = (string)JObject.Parse(data)["name"];
+            player.setIdAndName(id,name_);
+            player.gameObject.SetActive(true);
         });
-
 
         socket.On("hit",(string data)=>{
             int dmg = (int)JObject.Parse(data)["dmg"];
-            player.GetDmg(dmg);
-            Debug.Log("맞앗어");
+            string hitter = (string)JObject.Parse(data)["id"];
+            player.GetDmg(dmg,hitter);
         });
 
         socket.On("animate",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             int animeId = (int)JObject.Parse(data)["animeId"];
             if (id_ != id) {
-                characterList[id_].PlayAnimation(animeId);
+                characterList[id_].PlayAnimation((aniType)animeId);
             }
         });
+
         socket.On("delPlayer",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             Destroy(characterList[id_].gameObject);
+            characterList.Remove(id_);
+        });
+
+        socket.On("death",(string data)=>{
+            string id_ = (string)JObject.Parse(data)["id"];
+            string by_ = (string)JObject.Parse(data)["by"];
+            characterList[id_].DGim(id_);
             characterList.Remove(id_);
         });
     }
