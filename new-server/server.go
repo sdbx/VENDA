@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -37,19 +38,19 @@ type Server struct {
 
 	clientsSliceOwner *clientsOwner
 
-	handlers     map[string]func([]byte) error
+	handlers     map[string]func(string) error
 	onDisconnect func(id string)
 }
 
 func NewServer(addr string) *Server {
 	return &Server{
 		addr:              addr,
-		sendChan:          make(chan messageSend),
-		messageChan:       make(chan Message),
-		eventChan:         make(chan *EventMessage),
+		sendChan:          make(chan messageSend, bufferSize),
+		messageChan:       make(chan Message, bufferSize),
+		eventChan:         make(chan *EventMessage, bufferSize),
 		parser:            NewParser(),
 		clientsSliceOwner: newClientsOwner(),
-		handlers:          make(map[string]func([]byte) error),
+		handlers:          make(map[string]func(string) error),
 	}
 }
 
@@ -57,7 +58,7 @@ func (s *Server) Send(buf []byte, addr net.Addr) {
 	s.sendChan <- messageSend{buf, addr}
 }
 
-func (s *Server) On(event string, handler func([]byte) error) {
+func (s *Server) On(event string, handler func(string) error) {
 	s.handlers[event] = handler
 }
 
@@ -65,28 +66,28 @@ func (s *Server) OnDisconnect(handler func(id string)) {
 	s.onDisconnect = handler
 }
 
-func (s *Server) EmitTo(id string, event string, buf []byte) {
+func (s *Server) EmitTo(id string, event string, buf string) {
 	cli, ok := <-s.clientsSliceOwner.GetClientByID(id)
 	if !ok {
 		return
 	}
-	buf, err := json.Marshal(&EventMessage{Event: event, Payload: buf})
+	buf2, err := json.Marshal(&EventMessage{Event: event, Payload: buf})
 	if err != nil {
 		return
 	}
-	s.sendChan <- messageSend{buf, cli.addr}
+	s.sendChan <- messageSend{buf2, cli.addr}
 }
 
-func (s *Server) Broadcast(event string, buf []byte) {
+func (s *Server) Broadcast(event string, buf string) {
 	msg := &EventMessage{Event: event, Payload: buf}
-	buf, err := json.Marshal(msg)
+	buf2, err := json.Marshal(msg)
 	if err != nil {
 		panic(err)
 	}
 	for cli := range s.clientsSliceOwner.RangeClient() {
-		buf2 := make([]byte, len(buf))
-		copy(buf2, buf)
-		s.sendChan <- messageSend{buf2, cli.addr}
+		buf3 := make([]byte, len(buf))
+		copy(buf3, buf2)
+		s.sendChan <- messageSend{buf3, cli.addr}
 	}
 }
 
@@ -98,7 +99,7 @@ func (s *Server) garbageClientCollect(done chan bool) {
 		select {
 		case <-ticker.C:
 			for cli := range s.clientsSliceOwner.RangeClient() {
-				if time.Now().Sub(cli.lastPing) < time.Second {
+				if time.Now().Sub(cli.lastPing) > time.Second {
 					s.deleteClient(cli)
 				}
 			}
@@ -146,7 +147,12 @@ func (s *Server) listenConn(done <-chan bool) {
 				fmt.Println(err)
 				continue
 			}
-			s.parser.ParseMessage(addr, buf[:n])
+			msg, err := s.parser.ParseMessage(addr, buf[:n])
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			s.messageChan <- msg
 		}
 	}
 }
@@ -208,26 +214,28 @@ func (s *Server) handleMessage(msg Message) {
 			lastPing: time.Now(),
 		}
 		s.addClient(cli)
+		s.EmitTo(cli.id, "connected", `{"secret":"`+base64.StdEncoding.EncodeToString([]byte(secret))+`","id":"`+id+`"}`)
 	}
+
 }
 
 func (s *Server) addClient(cli client) {
-	s.clientsSliceOwner.AddClient(cli)
+	<-s.clientsSliceOwner.AddClient(cli)
 	s.parser.RegisterUser(cli.secret, cli.id)
 	// on connect
 }
 
 func (s *Server) deleteClient(cli client) {
-	s.clientsSliceOwner.RemoveClient(cli)
-	s.parser.deleteUser(cli.secret)
+	<-s.clientsSliceOwner.RemoveClient(cli)
+	s.parser.DeleteUser(cli.secret)
 	if s.onDisconnect != nil {
 		s.onDisconnect(cli.id)
 	}
-	s.Broadcast("disconnect", []byte(`{"id":"`+cli.id+`"}`))
+	s.Broadcast("disconnect", `{"id":"`+cli.id+`"}`)
 }
 
 func (s *Server) createUser() (string, string) {
-	secret := string(uuid.NewV4().Bytes())
+	secret := string(uuid.NewV4().Bytes()[:16])
 	id := uuid.NewV4().String()
 	return secret, id
 }

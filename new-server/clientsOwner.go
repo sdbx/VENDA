@@ -1,13 +1,17 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 type addClientOp struct {
-	cli client
+	cli  client
+	resp chan bool
 }
 
 type removeClientOp struct {
-	cli client
+	cli  client
+	resp chan bool
 }
 
 type getClientOp struct {
@@ -32,32 +36,40 @@ type clientsOwner struct {
 	clientsByAddr map[string]client
 }
 
+const bufferSize = 1024
+
 func newClientsOwner() *clientsOwner {
 	return &clientsOwner{
-		addClientChan:    make(chan addClientOp),
-		removeClientChan: make(chan removeClientOp),
-		getClientChan:    make(chan getClientOp),
-		rangeClientChan:  make(chan rangeClientOp),
-		updatePingChan:   make(chan string),
-		clients:          make(map[string]client),
-		clientsByAddr:    make(map[string]client),
+		addClientChan:    make(chan addClientOp, bufferSize),
+		removeClientChan: make(chan removeClientOp, bufferSize),
+		getClientChan:    make(chan getClientOp, bufferSize),
+		rangeClientChan:  make(chan rangeClientOp, bufferSize),
+		updatePingChan:   make(chan string, bufferSize),
+		clients:          make(map[string]client, bufferSize),
+		clientsByAddr:    make(map[string]client, bufferSize),
 	}
 }
 
-func (c *clientsOwner) AddClient(cli client) {
+func (c *clientsOwner) AddClient(cli client) <-chan bool {
+	out := make(chan bool, 1)
 	c.addClientChan <- addClientOp{
-		cli: cli,
+		cli:  cli,
+		resp: out,
 	}
+	return out
 }
 
-func (c *clientsOwner) RemoveClient(cli client) {
+func (c *clientsOwner) RemoveClient(cli client) <-chan bool {
+	out := make(chan bool, 1)
 	c.removeClientChan <- removeClientOp{
-		cli: cli,
+		cli:  cli,
+		resp: out,
 	}
+	return out
 }
 
 func (c *clientsOwner) GetClientByID(id string) <-chan client {
-	out := make(chan client)
+	out := make(chan client, 1)
 	c.getClientChan <- getClientOp{
 		byAddr: false,
 		id:     id,
@@ -67,7 +79,7 @@ func (c *clientsOwner) GetClientByID(id string) <-chan client {
 }
 
 func (c *clientsOwner) GetClientByAddr(addr string) <-chan client {
-	out := make(chan client)
+	out := make(chan client, 1)
 	c.getClientChan <- getClientOp{
 		byAddr: true,
 		addr:   addr,
@@ -77,7 +89,7 @@ func (c *clientsOwner) GetClientByAddr(addr string) <-chan client {
 }
 
 func (c *clientsOwner) RangeClient() <-chan client {
-	out := make(chan client)
+	out := make(chan client, 1)
 	c.rangeClientChan <- rangeClientOp{
 		resp: out,
 	}
@@ -93,13 +105,15 @@ func (c *clientsOwner) Run(done <-chan bool) {
 		select {
 		case op := <-c.addClientChan:
 			c.clients[op.cli.id] = op.cli
-			c.clients[op.cli.addr.String()] = op.cli
+			c.clientsByAddr[op.cli.addr.String()] = op.cli
+			close(op.resp)
 		case op := <-c.removeClientChan:
 			delete(c.clients, op.cli.id)
-			delete(c.clients, op.cli.addr.String())
+			delete(c.clientsByAddr, op.cli.addr.String())
+			close(op.resp)
 		case op := <-c.getClientChan:
 			if op.byAddr {
-				if cli, ok := c.clients[op.addr]; ok {
+				if cli, ok := c.clientsByAddr[op.addr]; ok {
 					op.resp <- cli
 				}
 				close(op.resp)
@@ -116,8 +130,10 @@ func (c *clientsOwner) Run(done <-chan bool) {
 			close(op.resp)
 		case id := <-c.updatePingChan:
 			if cli, ok := c.clients[id]; ok {
-				cli.lastPing = time.Now()
-				c.clients[id] = cli
+				cli2 := cli
+				cli2.lastPing = time.Now()
+				c.clients[id] = cli2
+				c.clientsByAddr[cli.addr.String()] = cli2
 			}
 		case <-done:
 			return

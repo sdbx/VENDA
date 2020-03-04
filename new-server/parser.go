@@ -39,7 +39,7 @@ type EventMessage struct {
 	Secret  string   `json:"-"`
 	ID      string   `json:"-"`
 	Event   string   `json:"event"`
-	Payload []byte   `json:"payload"`
+	Payload string   `json:"payload"`
 }
 
 func (h *EventMessage) sealed() {}
@@ -61,7 +61,7 @@ func (h *DisconnectMessage) GetAddr() net.Addr {
 
 func (s *Parser) ParseMessage(addr net.Addr, buf []byte) (Message, error) {
 	// 0: message type (1 byte)
-	if len(buf) != 0 {
+	if len(buf) == 0 {
 		return nil, errors.New("empty buffer")
 	}
 	messageType := buf[0]
@@ -95,10 +95,10 @@ func (s *Parser) ParseMessage(addr net.Addr, buf []byte) (Message, error) {
 			}
 		}
 
-		eventName := string(buf[:cutI-1])
+		eventName := string(buf[:cutI])
 		buf = buf[cutI+1:]
 
-		return &EventMessage{Addr: addr, Secret: secret, ID: id, Event: eventName, Payload: buf}, nil
+		return &EventMessage{Addr: addr, Secret: secret, ID: id, Event: eventName, Payload: string(buf)}, nil
 	case 0x03:
 		if len(buf) < 16 {
 			return nil, errors.New("invalid size")
@@ -113,7 +113,7 @@ func (s *Parser) ParseMessage(addr net.Addr, buf []byte) (Message, error) {
 			return nil, errors.New("no such user")
 		}
 
-		return &DisconnectMessage{ID: id}, nil
+		return &DisconnectMessage{Addr: addr, ID: id}, nil
 	}
 	return nil, errors.New("no such message type")
 }
@@ -124,7 +124,7 @@ func (s *Parser) RegisterUser(secret string, id string) {
 	s.mu.Unlock()
 }
 
-func (s *Parser) deleteUser(secret string) {
+func (s *Parser) DeleteUser(secret string) {
 	s.mu.Lock()
 	delete(s.idMap, secret)
 	s.mu.Unlock()

@@ -3,18 +3,38 @@ using System.Net;
 using System.Net.Sockets;
 using System.Globalization;  
 using System.Threading;  
-using System.Text;  
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Amguna {
+    public class ReceivedEventArgs : EventArgs  
+    {  
+        public ReceivedEventArgs(string s)  
+        {  
+            msg = s;  
+        }  
+        public string msg; 
+    }  
 
     class EventSocket {
-        public ManualResetEvent connectDone =   
-            new ManualResetEvent(false);
-        public ManualResetEvent receiveDone =   
-            new ManualResetEvent(false); 
-        private Socket _socket;
+        private ConcurrentQueue<ReceivedEventArgs> queue = new ConcurrentQueue<ReceivedEventArgs>();
+        private UdpClient _client;
         private IPEndPoint _remoteEP;
         private string _addr;
+
+        private string _id = null;
+        private byte[] _secret = null;
+
+        private Dictionary<string, Action<string>> _handlers = new Dictionary<string, Action<string>>();
+        private Thread _th;
+
+        private static void Log(string msg) {
+            Console.WriteLine(msg);
+        }
 
         private static IPEndPoint CreateIPEndPoint(string endPoint)
         {
@@ -32,40 +52,84 @@ namespace Amguna {
             }
             return new IPEndPoint(ip, port);
         }
-
         public EventSocket(string addr) {
             _addr = addr;
             _remoteEP = CreateIPEndPoint(_addr);
-            _socket = new Socket(AddressFamily.InterNetwork, 
-                SocketType.Dgram, ProtocolType.Udp); 
-           
+            _client = new UdpClient();
+            _connect();
+
+            _th = new Thread(Receive);
+            _th.IsBackground = true;  
+            _th.Start();
+        }
+        
+        private void _connect() {
+            if (_id == null) {
+                SendHandshake();
+                Log("sent Handshake");
+            }
         }
 
-        private void ConnectCallback(IAsyncResult ar) {  
-            try {    
-                Socket client = (Socket) ar.AsyncState;  
-    
-                // Complete the connection.  
-                client.EndConnect(ar);  
-    
-                Console.WriteLine("Socket connected to {0}",  
-                    client.RemoteEndPoint.ToString());  
-    
-                // Signal that the connection has been made.  
-                connectDone.Set();  
-            } catch (Exception e) {  
-                Console.WriteLine(e.ToString());  
-            }  
-        } 
+        private void Receive() {  
+            while (true)
+            {
+                try {
+                    var receivedResults = _client.Receive(ref _remoteEP);
+                    queue.Enqueue(new ReceivedEventArgs(Encoding.UTF8.GetString(receivedResults)));
+                } catch (Exception e) {
+                    Log($"ERROR {e.ToString()}");
+                }
+                
+            }
+        }
+
+        private void SendHandshake() {
+            byte[] byteData = new byte[] {0x01};
+            _client.Send(byteData, byteData.Length, _remoteEP);
+        }
+
+        private byte[] Combine(byte[] first, byte[] second)
+        {
+            byte[] ret = new byte[first.Length + second.Length];
+            Buffer.BlockCopy(first, 0, ret, 0, first.Length);
+            Buffer.BlockCopy(second, 0, ret, first.Length, second.Length);
+            return ret;
+        }
+
 
         public void Emit(string eventName, string data) {
-            byte[] byteData = Encoding.UTF8.GetBytes(eventName + ":" + data);  
-  
-            // Begin sending the data to the remote device.  
-            _socket.SendTo(byteData, 0, byteData.Length, 0, _remoteEP);
+            if (_id != null) {
+                byte[] byteData = Combine(Combine(new byte[] {0x02}, _secret), Encoding.UTF8.GetBytes(eventName + ":" + data));
+                _client.Send(byteData, byteData.Length, _remoteEP);
+            }
         }
         public void On(string eventName, Action<string> callback) {
+            _handlers[eventName] = callback;
+        }
 
+        private void ReceiveEvent(ReceivedEventArgs eventArgs) {
+            try {
+                var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(eventArgs.msg);
+                if (data["event"] == "connected") {
+                    var payload = JsonConvert.DeserializeObject<Dictionary<string, string>>(data["payload"]);
+                    _id = payload["id"];
+                    _secret = System.Convert.FromBase64String(payload["secret"]);
+                    Log($"CONNECTED as {_id}");
+                }
+
+                if ( _handlers.ContainsKey(data["event"])) {
+                    _handlers[data["event"]](data["payload"]);
+                }
+            } catch (Exception e) {
+                Log($"ERROR {e.ToString()} ");
+            }
+        }
+
+        public void Update() {
+            ReceivedEventArgs eventArgs;
+            while (queue.TryDequeue(out eventArgs)) {
+                ReceiveEvent(eventArgs);
+            }
         }
     }
 }
