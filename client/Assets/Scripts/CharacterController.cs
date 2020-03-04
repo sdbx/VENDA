@@ -39,7 +39,13 @@ public class CharacterController : MonoBehaviour
     [SerializeField]
     private float _doublePressTimeLimit = 0.5f;
 
+    [SerializeField]
+    private bool _isGrounded = false;
 
+    [SerializeField]
+    private bool jumpChecked = false;
+
+    
     void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
@@ -49,12 +55,21 @@ public class CharacterController : MonoBehaviour
 
     void Update()
     {
+        if(!jumpChecked && CheckIsGround())
+        {
+            _isGrounded = true;
+            jumpChecked = true;
+        }
+        else if(!CheckIsGround()){
+            _isGrounded = false;
+            jumpChecked = false;
+        }
+
         KeyInput();
     }
 
     void FixedUpdate()
     {
-        bool isGround  = CheckIsGround();
 
         if(_xMoveDir!=0)
         {
@@ -64,16 +79,17 @@ public class CharacterController : MonoBehaviour
 
         if (_jump)
         {
-            if (isGround)
+            if (_isGrounded)
             {
                 Jump(_jumpPower/2);  
                 _dashPoint = 2; 
+                _isGrounded = false;
             }
             _jump = false;
             return;
         }
 
-        if(_dashDir!=Dir.None&&isGround)
+        if(_dashDir!=Dir.None&&_isGrounded)
         {
             Jump(_jumpPower);
             _dashPoint = 2;
@@ -210,7 +226,7 @@ public class CharacterController : MonoBehaviour
 
     void MoveX(float x)
     {
-        if(CheckIsGround())
+        if(_isGrounded)
         {
             _rigidbody.velocity = new Vector2(x/10,_rigidbody.velocity.y);
         }

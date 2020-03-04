@@ -4,14 +4,19 @@ using UnityEngine;
 
 public class DeadBody : MonoBehaviour
 {
-    private Rigidbody2D _rd;
-    private void Awake() 
+    [SerializeField]
+    private Rigidbody2D[] _parts;
+
+    IEnumerator Timer()
     {
-        _rd = GetComponent<Rigidbody2D>();
+        yield return new WaitForSeconds(30f);
+        Destroy(gameObject);
     }
 
     void Start()
     {
-        _rd.AddForce(Random.insideUnitCircle*Random.Range(200,300));
+        Timer();
+        foreach(var part in _parts)
+        part.AddForce(Random.insideUnitCircle*Random.Range(200,300));
     }
 }

@@ -3,6 +3,7 @@ using socket.io;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Amguna;
 
 public class SocketManager : MonoBehaviour
 {
@@ -13,66 +14,59 @@ public class SocketManager : MonoBehaviour
     private bool connected = false;
     public Character player;
     [SerializeField]
-    private string serverUrl = "http://59.11.136.225:5353/";
+    private string serverUrl = "59.11.136.225:5858";
     [SerializeField]
     private MapManager _mapManager;
-    public Socket socket;
+    public EventSocket socket;
     private string id;
-    public Dictionary<string,Character> characterList = new Dictionary<string, Character>();
+    public Dictionary<string, Character> characterList = new Dictionary<string, Character>();
+    [SerializeField]
+    private CameraEffect _cameraEffect;
+
+    private void Awake()
+    {
+        socket = new EventSocket(serverUrl);
+        _cameraEffect = Camera.main.GetComponent<CameraEffect>();
+    }
 
     void Start()
     {
-        Application.targetFrameRate = 60;
-        socket = Socket.Connect(serverUrl);
+        
+        Application.targetFrameRate = 70;
 
 
-        socket.On(SystemEvents.connect, () =>
+        socket.On("connected", (s) =>
         {
             connected = true;
         });
 
-        socket.On(SystemEvents.reconnect, (int reconnectAttempt) =>
+        socket.On("reconnect", (s) =>
         {
-            Debug.Log("Hello, Again! " + reconnectAttempt);
-        });
-
-        socket.On(SystemEvents.disconnect, () =>
-        {
-            Debug.Log("Bye~");
-            connected = false;
+            Debug.Log("Hello, Again! ");
         });
 
         socket.On("userData", (string data) =>
         {
-            var userData = JsonConvert.DeserializeObject<Dictionary<string, CharacterData>>(data);
-            foreach (var keyValue in userData)
+            var userData = JsonConvert.DeserializeObject<CharacterData>(data);
+            if (userData.id == id)
+                return;
+
+            if (!characterList.ContainsKey(userData.id))
             {
-                if(keyValue.Key == id)
-                    continue;
-
-                if(!characterList.ContainsKey(keyValue.Key))
-                {
-                    var newChar = Instantiate<Character>(prefab);
-                    characterList.Add(keyValue.Key,newChar);
-                }
-
-
-                Character cha = characterList[keyValue.Key];
-                cha.SetData(keyValue.Value);
+                var newChar = Instantiate<Character>(prefab);
+                characterList.Add(userData.id, newChar);
             }
 
+
+            Character cha = characterList[userData.id];
+            cha.SetData(userData);
         });
 
         socket.On("info", (string data) => {
             id = (string)JObject.Parse(data)["id"];
             var name_ = (string)JObject.Parse(data)["name"];
-            var map_ = (string)JObject.Parse(data)["map"];
             player.setIdAndName(id,name_);
-            
             player.gameObject.SetActive(true);
-            Debug.Log(map_);
-            _mapManager.SetMap(map_,(0,0));
-            player.GetComponent<Rigidbody2D>().position = _mapManager.GetPlayerSpawnPositions(TileLayer.Obstacle)[0];
             
         });
 
@@ -80,6 +74,7 @@ public class SocketManager : MonoBehaviour
             int dmg = (int)JObject.Parse(data)["dmg"];
             string hitter = (string)JObject.Parse(data)["id"];
             player.GetDmg(dmg,hitter);
+            Debug.Log(data);
         });
 
         socket.On("animate",(string data)=>{
@@ -99,17 +94,35 @@ public class SocketManager : MonoBehaviour
         socket.On("death",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             string by_ = (string)JObject.Parse(data)["by"];
-            characterList[id_].DGim(id_);
+            Character deathChar;
+            if(id == id_)
+                deathChar = player;
+            else
+                deathChar = characterList[id_];
+
+            deathChar.DGim();
+            if(by_ == id)
+            {
+                _cameraEffect.Shake(0.5f);
+                player.Heal(30);
+            }
             characterList.Remove(id_);
+            Destroy(deathChar.gameObject);
+            socket.Disconnect();
         });
     }
 
     void Update()
     {
+        socket.Update();
         if (connected)
         {
-            socket.EmitJson("myData", JsonConvert.SerializeObject(player.GetData()));
+            socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));
         }
+    }
 
+    void OnApplicationQuit()
+    {
+        socket.Disconnect();
     }
 }

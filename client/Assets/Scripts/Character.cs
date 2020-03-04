@@ -122,7 +122,7 @@ public class Character : MonoBehaviour
 
     public void SendAnimeAndPlay(aniType aniType)
     {
-        _socketManager.socket.EmitJson("animate", JsonConvert.SerializeObject(new { id = _id, animeId = aniType }));
+        _socketManager.socket.Emit("animate", JsonConvert.SerializeObject(new { id = _id, animeId = aniType }));
         PlayAnimation(aniType);
     }
 
@@ -267,7 +267,7 @@ public class Character : MonoBehaviour
             }
             else
             {
-                _socketManager.socket.EmitJson("hit", JsonConvert.SerializeObject(new { target = enemy._id, dmg = 30 }));
+                _socketManager.socket.Emit("hit", JsonConvert.SerializeObject(new { target = enemy._id, dmg = 30 }));
             }
         }
     }
@@ -279,7 +279,7 @@ public class Character : MonoBehaviour
         {
             //뒤짐처리
             if(isMe)
-                _socketManager.socket.EmitJson("death", JsonConvert.SerializeObject(new { by = hitter}));
+                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new { by = hitter}));
             return;
         }
 
@@ -293,9 +293,17 @@ public class Character : MonoBehaviour
         _cameraEffect.ShowBloodOnScreen();
     }
 
-    public void DGim(string killer)
+    public void Heal(int amount)
+    {
+        _hp += amount;
+        _hp = Mathf.Clamp(_hp,0,_maxHp);
+        hpbar.setValue(_hp/_maxHp);
+    }
+
+    public void DGim()
     {
         Instantiate(_deadBody, transform.position, transform.rotation);
+
         _isDead = true;
     }
 
