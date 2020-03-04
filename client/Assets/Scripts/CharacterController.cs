@@ -117,6 +117,7 @@ public class CharacterController : MonoBehaviour
         {
             Jump(_jumpPower);
             _dashPoint = 2;
+            _isGrounded = false;
             //_dashDir = Dir.None;
             return;
         }

@@ -15,7 +15,7 @@ public class Character : MonoBehaviour
     private SocketManager _socketManager;
     public bool isMe = false;
     [SerializeField]
-    private GameObject _deadBody;
+    private DeadBody _deadBody;
     [SerializeField]
     private Text _nameText;
 
@@ -73,6 +73,8 @@ public class Character : MonoBehaviour
 
     [SerializeField]
     private float _maxDistanceToListen = 5;
+
+    private float _volume;
 
     void Awake()
     {
@@ -304,8 +306,8 @@ public class Character : MonoBehaviour
 
     public void DGim()
     {
-        Instantiate(_deadBody, transform.position, transform.rotation);
-
+        var deadBody = Instantiate<DeadBody>(_deadBody, transform.position, transform.rotation);
+        deadBody.DestroyBody(_volume);
         _isDead = true;
     }
 
@@ -337,8 +339,9 @@ public class Character : MonoBehaviour
             _name = characterData.name;
             _nameText.text = _name;
         }
+        _volume = Vector2.Distance(myPos,transform.position);
         if(!isMe)
-            SetVolumeWithDistance(Vector2.Distance(myPos,transform.position));
+            SetVolumeWithDistance(_volume);
     }
 
     public void SetVolumeWithDistance(float distance)

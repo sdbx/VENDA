@@ -6,6 +6,8 @@ public class DeadBody : MonoBehaviour
 {
     [SerializeField]
     private Rigidbody2D[] _parts;
+    [SerializeField]
+    private AudioSource _audio;
 
     IEnumerator Timer()
     {
@@ -13,9 +15,10 @@ public class DeadBody : MonoBehaviour
         Destroy(gameObject);
     }
 
-    void Start()
+    public void DestroyBody(float volume)
     {
-        Timer();
+        _audio.Play();
+        StartCoroutine(Timer());
         foreach(var part in _parts)
         part.AddForce(Random.insideUnitCircle*Random.Range(200,300));
     }
