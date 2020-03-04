@@ -91,6 +91,10 @@ public class SocketManager : MonoBehaviour
             characterList.Remove(id_);
         });
 
+        socket.On("ping",(string data)=>{
+            socket.EmitJson("pong", data);
+        });
+        
         socket.On("death",(string data)=>{
             string id_ = (string)JObject.Parse(data)["id"];
             string by_ = (string)JObject.Parse(data)["by"];
