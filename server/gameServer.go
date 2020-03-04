@@ -23,22 +23,26 @@ func NewGameServer(serv *Server) *GameServer {
 
 func (g *GameServer) RegisterHandlers() {
 	g.serv.OnConnect(func(id string) {
-		g.EmitTo(id, "info", M{"name": "test", "id": id})
+		g.EmitTo(id, "info", M{"name": GenerateName(), "id": id})
 	})
 	g.serv.On("animate", wrapFunc(func(id string, buf M) error {
 		g.Broadcast("animate", M{"id": buf["id"], "animeId": buf["animeId"]})
 		return nil
 	}))
 	g.serv.On("hit", wrapFunc(func(id string, buf M) error {
-		g.EmitTo("hit", buf["target"].(string), M{"dmg": buf["dmg"], "id": id})
+		g.EmitTo(buf["target"].(string), "hit", M{"dmg": buf["dmg"], "id": id})
 		return nil
 	}))
 	g.serv.On("death", wrapFunc(func(id string, buf M) error {
-		g.Broadcast("animate", M{"id": id, "by": buf["id"]})
+		g.Broadcast("death", M{"id": id, "by": buf["id"]})
 		return nil
 	}))
 	g.serv.OnDisconnect(func(id string) {
+		g.mu.Lock()
+		delete(g.userData, id)
+		g.mu.Unlock()
 		g.Broadcast("delPlayer", M{"id": id})
+
 	})
 	g.serv.On("myData", wrapFunc(func(id string, buf M) error {
 		g.mu.Lock()

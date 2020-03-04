@@ -10,7 +10,7 @@
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
 
-/new-server/target/
+/server/main
 .ipynb_checkpoints
 
 # MemoryCaptures can get excessive in size.
