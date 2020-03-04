@@ -7,6 +7,11 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3343458744220164782, guid: 548a79a452830dc449c3eefaa4940d15,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5249208679463905807, guid: 548a79a452830dc449c3eefaa4940d15,
         type: 3}
       propertyPath: m_Layer
@@ -126,6 +131,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Layer
       value: 14
+      objectReference: {fileID: 0}
+    - target: {fileID: 5249208680272286558, guid: 548a79a452830dc449c3eefaa4940d15,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5249208680320284240, guid: 548a79a452830dc449c3eefaa4940d15,
         type: 3}

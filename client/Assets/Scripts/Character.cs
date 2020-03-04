@@ -53,7 +53,7 @@ public class Character : MonoBehaviour
     private bool _isCooltimeIncreased = false;
 
     [SerializeField]
-    private CharacterAnimation _characterAnimation;
+    private CharacterAnimationAndSound _characterAnimationAndSound;
 
     private float _speed = 0;
 
@@ -70,6 +70,9 @@ public class Character : MonoBehaviour
     private CameraEffect _cameraEffect;
 
     private List<Character> _hittedEnemy = new List<Character>();
+
+    [SerializeField]
+    private float _maxDistanceToListen = 5;
 
     void Awake()
     {
@@ -88,7 +91,7 @@ public class Character : MonoBehaviour
             _cooltime += Time.deltaTime / (_isCooltimeIncreased?3:1) ;
             _coolTimeBar.setValue(_cooltime / _maxCooltime);
             if (_cooltime >= _maxCooltime)
-                _characterAnimation.PlayCooltimeSound();
+                _characterAnimationAndSound.PlayCooltimeSound();
         }
         else 
         {
@@ -101,7 +104,7 @@ public class Character : MonoBehaviour
                 _facingRight = _rigidbody.velocity.x > 0;
             _speed = Math.Abs(_rigidbody.velocity.x);
         }
-        _characterAnimation.Walk(_speed);
+        _characterAnimationAndSound.Walk(_speed);
         var rotation = _characterTransform.rotation;
         rotation.y = _facingRight ? 0 : 180;
         _characterTransform.rotation = rotation;
@@ -111,13 +114,12 @@ public class Character : MonoBehaviour
     public void SetPos(float x, float y)
     {
         _rigidbody.position = new Vector2(x, y);
-
     }
 
     //CharacterAnimation 다시 추가 해서 별도로 다시 만들것 
     public void PlayAnimation(aniType aniType)
     {
-        _characterAnimation.PlayAnimation(aniType);
+        _characterAnimationAndSound.PlayAnimation(aniType);
     }
 
     public void SendAnimeAndPlay(aniType aniType)
@@ -320,7 +322,7 @@ public class Character : MonoBehaviour
         return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y, _facingRight, _speed, _defense, _name);
     }
 
-    public void SetData(CharacterData characterData)
+    public void SetData(CharacterData characterData,Vector2 myPos)
     {
         _id = characterData.id;
         SetPos(characterData.x, characterData.y);
@@ -334,8 +336,14 @@ public class Character : MonoBehaviour
         {
             _name = characterData.name;
             _nameText.text = _name;
-        }   
+        }
+        if(!isMe)
+            SetVolumeWithDistance(Vector2.Distance(myPos,transform.position));
+    }
 
+    public void SetVolumeWithDistance(float distance)
+    {
+        _characterAnimationAndSound.SetVolume(1-distance/_maxDistanceToListen);
     }
 
 

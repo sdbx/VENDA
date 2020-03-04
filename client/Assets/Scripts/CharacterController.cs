@@ -40,10 +40,15 @@ public class CharacterController : MonoBehaviour
     private float _doublePressTimeLimit = 0.5f;
 
     [SerializeField]
+    private float _minGroundCheckTime = 3;
+    [SerializeField]
+    private float _groundCheckTime = 0;
+
+    [SerializeField]
     private bool _isGrounded = false;
 
     [SerializeField]
-    private bool jumpChecked = false;
+    private bool _groundChecked = false;
 
     
     void Awake()
@@ -55,14 +60,33 @@ public class CharacterController : MonoBehaviour
 
     void Update()
     {
-        if(!jumpChecked && CheckIsGround())
+        var checkGround = CheckIsGround();
+        if(!_isGrounded&&checkGround)
+        {
+            if(_groundCheckTime<_minGroundCheckTime)
+            {
+                _groundCheckTime+=Time.deltaTime;
+            }
+            else
+            {
+                _groundCheckTime = 0;
+                _isGrounded = true;
+                _groundChecked = true;
+            }
+           
+        }
+        else
+        {
+            _groundCheckTime = 0;
+        }
+        if(!_groundChecked && checkGround)
         {
             _isGrounded = true;
-            jumpChecked = true;
+            _groundChecked = true;
         }
-        else if(!CheckIsGround()){
+        else if(!checkGround){
             _isGrounded = false;
-            jumpChecked = false;
+            _groundChecked = false;
         }
 
         KeyInput();

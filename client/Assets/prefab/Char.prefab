@@ -136,7 +136,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 30}
+  m_SizeDelta: {x: 59.84, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7967547866483923441
 CanvasRenderer:
@@ -216,7 +216,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5144902364240878043}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.28, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 5249208680272286549}
@@ -14870,7 +14870,7 @@ GameObject:
   m_Icon: {fileID: -964228994112308473, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5249208680272286549
 Transform:
   m_ObjectHideFlags: 0
@@ -14917,8 +14917,10 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 131072
   _doublePressTimeLimit: 0.3
+  _minGroundCheckTime: 3
+  _groundCheckTime: 0
   _isGrounded: 0
-  jumpChecked: 0
+  _groundChecked: 0
 --- !u!114 &5249208680272286547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14949,8 +14951,9 @@ MonoBehaviour:
   _maxCooltime: 1
   _cooltime: 0
   _coolTimeBar: {fileID: 5249208679613063922}
-  _characterAnimation: {fileID: 7046556621590646109}
+  _characterAnimationAndSound: {fileID: 7046556621590646109}
   _characterTransform: {fileID: 5249208679463905806}
+  _maxDistanceToListen: 20
 --- !u!50 &5249208680272286544
 Rigidbody2D:
   serializedVersion: 4

@@ -59,7 +59,7 @@ public class SocketManager : MonoBehaviour
 
 
             Character cha = characterList[userData.id];
-            cha.SetData(userData);
+            cha.SetData(userData,player.transform.position);
         });
 
         socket.On("info", (string data) => {

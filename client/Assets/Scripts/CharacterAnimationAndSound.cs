@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
-public class CharacterAnimation : MonoBehaviour
+public class CharacterAnimationAndSound : MonoBehaviour
 {
 
     [SerializeField]
@@ -59,6 +59,13 @@ public class CharacterAnimation : MonoBehaviour
     [SerializeField]
     private Animator _animator;
 
+    private float _volume = 1f;
+
+    public void SetVolume(float volume)
+    {
+        _volume = volume;
+    }
+
     //walking
     public void Walk(float speed)
     {
@@ -85,28 +92,28 @@ public class CharacterAnimation : MonoBehaviour
 
     public void PlayAttackSound()
     {
-        _audioSource.PlayOneShot(_attack,_attackVolume);
+        PlaySound(_attack,_attackVolume);
     }
     public void PlayCooltimeSound()
     {
-        _audioSource.PlayOneShot(_cooltime,_cooltimeVolume);
+        PlaySound(_cooltime,_cooltimeVolume);
     }
 
     //dash
     public void PlayDashHorizontal()
     {
         _horizontalDashParticle.DuplicateAndPlay();
-        _audioSource.PlayOneShot(_dash,_dashVolume);
+        PlaySound(_dash,_dashVolume);
     }
     public void PlayDashDown()
     {
         _downDashParticle.DuplicateAndPlay();
-        _audioSource.PlayOneShot(_dash,_dashVolume);
+        PlaySound(_dash,_dashVolume);
     }
     public void PlayBloodEffect()
     {
         _bloodParticle.DuplicateAndPlay();
-        _audioSource.PlayOneShot(_blood,_bloodVolume);
+        PlaySound(_blood,_bloodVolume);
     }
 
     //defense
@@ -114,18 +121,23 @@ public class CharacterAnimation : MonoBehaviour
     {
         _shieldPop.DuplicateAndPlay();
         _guardingEffect.Play();
-        _audioSource.PlayOneShot(_defenseOn,_defenseOnVolume);
+        PlaySound(_defenseOn,_defenseOnVolume);
     }
     public void PlayDefenseExitEffect()
     {
         _shieldPop.DuplicateAndPlay();
         _guardingEffect.Stop();
-        _audioSource.PlayOneShot(_defenseOff,_defenseOffVolume);
+        PlaySound(_defenseOff,_defenseOffVolume);
     }
     public void PlayDefenseSuccess()
     {
         _guardSuccessEffect.DuplicateAndPlay();
-        _audioSource.PlayOneShot(_defenseSuccess,_defenseSuccessVolume);
+        PlaySound(_defenseSuccess,_defenseSuccessVolume);
+    }
+
+    public void PlaySound(AudioClip audio,float volume)
+    {
+        _audioSource.PlayOneShot(audio,volume*_volume);
     }
 
     public void PlayAnimation(aniType aniType)
