@@ -14,7 +14,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-const maxBufferSize = 1024
+const maxBufferSize = 4024
 
 type messageSend struct {
 	buf  []byte
@@ -38,8 +38,9 @@ type Server struct {
 
 	clientsSliceOwner *clientsOwner
 
-	handlers     map[string]func(string) error
+	handlers     map[string]func(id string, buf string) error
 	onDisconnect func(id string)
+	onConnect    func(id string)
 }
 
 func NewServer(addr string) *Server {
@@ -50,7 +51,7 @@ func NewServer(addr string) *Server {
 		eventChan:         make(chan *EventMessage, bufferSize),
 		parser:            NewParser(),
 		clientsSliceOwner: newClientsOwner(),
-		handlers:          make(map[string]func(string) error),
+		handlers:          make(map[string]func(string, string) error),
 	}
 }
 
@@ -58,7 +59,7 @@ func (s *Server) Send(buf []byte, addr net.Addr) {
 	s.sendChan <- messageSend{buf, addr}
 }
 
-func (s *Server) On(event string, handler func(string) error) {
+func (s *Server) On(event string, handler func(string, string) error) {
 	s.handlers[event] = handler
 }
 
@@ -75,7 +76,7 @@ func (s *Server) EmitTo(id string, event string, buf string) {
 	if err != nil {
 		return
 	}
-	s.sendChan <- messageSend{buf2, cli.addr}
+	s.Send(buf2, cli.addr)
 }
 
 func (s *Server) Broadcast(event string, buf string) {
@@ -85,9 +86,9 @@ func (s *Server) Broadcast(event string, buf string) {
 		panic(err)
 	}
 	for cli := range s.clientsSliceOwner.RangeClient() {
-		buf3 := make([]byte, len(buf))
+		buf3 := make([]byte, len(buf2))
 		copy(buf3, buf2)
-		s.sendChan <- messageSend{buf3, cli.addr}
+		s.Send(buf3, cli.addr)
 	}
 }
 
@@ -197,7 +198,7 @@ func (s *Server) handleMessage(msg Message) {
 		}
 	case *EventMessage:
 		if handler, ok := s.handlers[msg.Event]; ok {
-			err := handler(msg.Payload)
+			err := handler(msg.ID, msg.Payload)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -215,6 +216,9 @@ func (s *Server) handleMessage(msg Message) {
 		}
 		s.addClient(cli)
 		s.EmitTo(cli.id, "connected", `{"secret":"`+base64.StdEncoding.EncodeToString([]byte(secret))+`","id":"`+id+`"}`)
+		if s.onConnect != nil {
+			s.onConnect(cli.id)
+		}
 	}
 
 }
@@ -222,7 +226,6 @@ func (s *Server) handleMessage(msg Message) {
 func (s *Server) addClient(cli client) {
 	<-s.clientsSliceOwner.AddClient(cli)
 	s.parser.RegisterUser(cli.secret, cli.id)
-	// on connect
 }
 
 func (s *Server) deleteClient(cli client) {
@@ -236,6 +239,10 @@ func (s *Server) deleteClient(cli client) {
 
 func (s *Server) createUser() (string, string) {
 	secret := string(uuid.NewV4().Bytes()[:16])
-	id := uuid.NewV4().String()
+	id := uuid.NewV4().String()[:6]
 	return secret, id
+}
+
+func (s *Server) OnConnect(f func(string)) {
+	s.onConnect = f
 }

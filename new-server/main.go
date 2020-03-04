@@ -1,12 +1,8 @@
 package main
 
-import "fmt"
-
 func main() {
-	server := NewServer(":5858")
-	server.On("asdf", func(buf string) error {
-		fmt.Println(buf)
-		return nil
-	})
-	server.Run()
+	server := NewServer(":5859")
+	gserver := NewGameServer(server)
+	gserver.RegisterHandlers()
+	gserver.Run()
 }
