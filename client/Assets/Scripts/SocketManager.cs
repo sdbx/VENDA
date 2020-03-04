@@ -92,7 +92,7 @@ public class SocketManager : MonoBehaviour
         });
 
         socket.On("ping",(string data)=>{
-            socket.EmitJson("pong", data);
+            socket.Emit("pong", data);
         });
         
         socket.On("death",(string data)=>{
