@@ -13,11 +13,18 @@ public class CharacterController : MonoBehaviour
     private float _dashJumpPower = 0.5f;
     [SerializeField]
     private float _dashPower = 0.5f;
+    
 
     [SerializeField]
-    private Transform _feetPos;
+    private List<Transform> _feetPoses;
+    Vector3 _feetleftOffset;
+    Vector3 _feetrightOffset;
+    Vector3 _feetCenterOffset;
     [SerializeField]
-    private float _groundCheckRadius;
+    float _checkRectSize;
+    
+    [SerializeField]
+    private float _groundCheckDistance;
     [SerializeField]
     private LayerMask whatIsGround;
 
@@ -32,6 +39,10 @@ public class CharacterController : MonoBehaviour
     private Dir _dashDir = Dir.None;
     
     private bool _jump = false;
+
+    [SerializeField]
+    private float _maxClimbAngle;
+
     
     //dash key double press check
     private KeyCode _prevKey;
@@ -50,17 +61,39 @@ public class CharacterController : MonoBehaviour
     [SerializeField]
     private bool _groundChecked = false;
 
+
+    [SerializeField]
+    private Vector3 _currentGroundVector;
+
+    [SerializeField]
+    private CapsuleCollider2D _charCollider;
     
+    [SerializeField]
+    private float _BothFeetCheckDistance = 0.6f;
+    private bool _BothFeetOnGround;
+
+
+
+
     void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         _transform = GetComponent<Transform>();
         _character = GetComponent<Character>();
+
+        var halfwidth = _charCollider.size.x/2;
+        var halfheight = _charCollider.size.y/2;
+
+        _feetleftOffset = new Vector2(-halfwidth+_charCollider.offset.x,-halfheight+_charCollider.offset.y);
+        _feetrightOffset = new Vector2(halfwidth+_charCollider.offset.x,-halfheight+_charCollider.offset.y);
+        _feetCenterOffset = new Vector3(_charCollider.offset.x,-halfheight+_charCollider.offset.y);
     }
 
     void Update()
     {
-        var checkGround = CheckIsGround();
+        var ray = Physics2D.CircleCast((Vector2)(_charCollider.transform.position)+_charCollider.offset,_charCollider.size.x/2,Vector2.down,_groundCheckDistance,whatIsGround);
+        UpdateGroundAngle(ray);
+        var checkGround = CheckIsGround(ray);
         if(!_isGrounded&&checkGround)
         {
             if(_groundCheckTime<_minGroundCheckTime)
@@ -218,7 +251,6 @@ public class CharacterController : MonoBehaviour
             
         }
         return dashKeyInputType.Single;
-        
     }
     
     private bool CheckDoublePress(KeyCode keyCode)
@@ -251,9 +283,9 @@ public class CharacterController : MonoBehaviour
 
     void MoveX(float x)
     {
-        if(_isGrounded)
-        {
-            _rigidbody.velocity = new Vector2(x/10,_rigidbody.velocity.y);
+        if (_isGrounded)
+        {       
+           _rigidbody.velocity = _currentGroundVector*x/10;
         }
         else
         {
@@ -261,14 +293,34 @@ public class CharacterController : MonoBehaviour
         }
     }
 
-    private bool CheckIsGround()
+    private void UpdateGroundAngle(RaycastHit2D ray)
     {
-        return Physics2D.OverlapCircle(_feetPos.position,_groundCheckRadius,whatIsGround);
+        if(!ray)
+        {
+            _currentGroundVector = Vector2.right;
+            return;
+        }
+        _currentGroundVector = new Vector3(ray.normal.y,-ray.normal.x);
+        
     }
 
+    private bool CheckIsGround(RaycastHit2D ray)
+    {
+        if(!ray)
+        {
+            return false;
+        }
+        var angle = Mathf.Acos( Vector2.Dot(ray.normal,Vector2.up))*Mathf.Rad2Deg;
+        Debug.Log(angle);
+        return Mathf.Abs(angle)<_maxClimbAngle;
+    }
+    private bool RaycastGround(Vector3 pos,float distance)
+    {
+        var ray = Physics2D.Raycast(pos, transform.TransformDirection(Vector2.down), distance, whatIsGround);
+        Debug.DrawRay(pos, Vector2.down * ray.distance, Color.yellow);
+        return ray;
+    }
 }
-
-
 
 enum dashKeyInputType
 {

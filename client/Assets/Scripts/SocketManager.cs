@@ -23,6 +23,8 @@ public class SocketManager : MonoBehaviour
     [SerializeField]
     private CameraEffect _cameraEffect;
 
+    private string _preSettedName = "";
+
     private void Awake()
     {
         socket = new EventSocket(serverUrl);
@@ -31,9 +33,14 @@ public class SocketManager : MonoBehaviour
 
     void Start()
     {
-        
         Application.targetFrameRate = 70;
 
+        var nameSetter = GameObject.FindGameObjectWithTag("NickNameSetter");
+        if(nameSetter)
+        {
+            _preSettedName = nameSetter.GetComponent<NicknameSetter>()._settedName;
+            Destroy(nameSetter);
+        }
 
         socket.On("connected", (s) =>
         {
@@ -59,53 +66,64 @@ public class SocketManager : MonoBehaviour
 
 
             Character cha = characterList[userData.id];
-            cha.SetData(userData,player.transform.position);
+            cha.SetData(userData, player.transform.position);
         });
 
-        socket.On("info", (string data) => {
+        socket.On("info", (string data) =>
+        {
             id = (string)JObject.Parse(data)["id"];
             var name_ = (string)JObject.Parse(data)["name"];
-            player.setIdAndName(id,name_);
+
+            if (_preSettedName != "")
+                name_ = _preSettedName;
+
+            player.setIdAndName(id, name_);
             player.gameObject.SetActive(true);
-            
+
         });
 
-        socket.On("hit",(string data)=>{
+        socket.On("hit", (string data) =>
+        {
             int dmg = (int)JObject.Parse(data)["dmg"];
             string hitter = (string)JObject.Parse(data)["id"];
-            player.GetDmg(dmg,hitter);
+            player.GetDmg(dmg, hitter);
             Debug.Log(data);
         });
 
-        socket.On("animate",(string data)=>{
+        socket.On("animate", (string data) =>
+        {
             string id_ = (string)JObject.Parse(data)["id"];
             int animeId = (int)JObject.Parse(data)["animeId"];
-            if (id_ != id) {
+            if (id_ != id)
+            {
                 characterList[id_].PlayAnimation((aniType)animeId);
             }
         });
 
-        socket.On("delPlayer",(string data)=>{
+        socket.On("delPlayer", (string data) =>
+        {
             string id_ = (string)JObject.Parse(data)["id"];
             Destroy(characterList[id_].gameObject);
             characterList.Remove(id_);
         });
 
-        socket.On("ping",(string data)=>{
+        socket.On("ping", (string data) =>
+        {
             socket.Emit("pong", data);
         });
-        
-        socket.On("death",(string data)=>{
+
+        socket.On("death", (string data) =>
+        {
             string id_ = (string)JObject.Parse(data)["id"];
             string by_ = (string)JObject.Parse(data)["by"];
             Character deathChar;
-            if(id == id_)
+            if (id == id_)
                 deathChar = player;
             else
                 deathChar = characterList[id_];
 
             deathChar.DGim();
-            if(by_ == id)
+            if (by_ == id)
             {
                 _cameraEffect.Shake(0.5f);
                 player.Heal(30);

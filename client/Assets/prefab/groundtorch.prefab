@@ -87,7 +87,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 4.6e-44, z: 8.422e-42, w: 6e-44}
+  m_BoundingSphereOverride: {x: -1.1820178, y: 0, z: 1, w: 1}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -3861,7 +3861,7 @@ ParticleSystem:
       properties: 0
       emitProbability: 1
   LightsModule:
-    enabled: 1
+    enabled: 0
     ratio: 1
     light: {fileID: 5144621989601403071}
     randomDistribution: 1
@@ -4827,7 +4827,7 @@ ParticleSystemRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: -377149987
-  m_SortingLayer: 8
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_RenderMode: 0
   m_SortMode: 0
@@ -4862,6 +4862,7 @@ GameObject:
   m_Component:
   - component: {fileID: 859886889059580593}
   - component: {fileID: 8144547676436741380}
+  - component: {fileID: 3103154850351497364}
   m_Layer: 0
   m_Name: groundtorch
   m_TagString: Untagged
@@ -4920,7 +4921,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: -377149987
-  m_SortingLayer: 8
+  m_SortingLayer: 7
   m_SortingOrder: 1
   m_Sprite: {fileID: 21300000, guid: 7dc72cd25c31cd04aa4d577b1a9e722c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -4933,3 +4934,20 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &3103154850351497364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6920090821871047634}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f8b2aca20e8166458e02cf95c93d734, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flickeringLight: {fileID: 5144621989601403071}
+  _min: 0.86
+  _max: 1
+  _rmin: 20
+  _rmax: 22

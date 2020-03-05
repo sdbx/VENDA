@@ -3770,7 +3770,7 @@ ParticleSystem:
       properties: 0
       emitProbability: 1
   LightsModule:
-    enabled: 1
+    enabled: 0
     ratio: 1
     light: {fileID: 6442869504640301350}
     randomDistribution: 1
@@ -4771,6 +4771,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1953121905173872666}
   - component: {fileID: 3881037751775271221}
+  - component: {fileID: 5257190842486940537}
   m_Layer: 0
   m_Name: torch
   m_TagString: Untagged
@@ -4842,6 +4843,23 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &5257190842486940537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6239306730834815410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f8b2aca20e8166458e02cf95c93d734, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flickeringLight: {fileID: 6442869504640301350}
+  _min: 0.86
+  _max: 1
+  _rmin: 16
+  _rmax: 20
 --- !u!1 &8299825752501229561
 GameObject:
   m_ObjectHideFlags: 0
@@ -4929,7 +4947,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 60.03473, z: -12.834902, w: 0}
+  m_BoundingSphereOverride: {x: 0, y: 2e-44, z: 7.717e-42, w: 6e-44}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
