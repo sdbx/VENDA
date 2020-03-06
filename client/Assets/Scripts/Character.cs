@@ -19,8 +19,6 @@ public class Character : MonoBehaviour
     [SerializeField]
     private Text _nameText;
 
-    private bool _isDead;
-
     //attack collision
     [SerializeField]
     private AttackCollision _rightAttackCollision;
@@ -74,19 +72,51 @@ public class Character : MonoBehaviour
     [SerializeField]
     private float _maxDistanceToListen = 5;
 
+    [SerializeField]
+    private Transform[] _spawnPoints;
+
+
     private float _volume;
+    public bool _dead{get;private set;} = false;
+
+    private IEnumerator Respawn()
+    {
+        yield return new WaitForSeconds(5);
+        SetDefaultValue();
+    }
+
+    private void SetDefaultValue()
+    {
+        _hp = _maxHp;
+        _facingRight = false;
+        _cooltime = 0;
+        _isCooltimeIncreased = false;
+        _speed = 0;
+        _defense = false;
+        _dead = false;
+        gameObject.SetActive(true);
+        hpbar.setValue(_hp/_maxHp);
+        SetPos(GetRandomSpawnPoint());
+    }
+
+    private Vector2 GetRandomSpawnPoint()
+    {
+        return _spawnPoints[UnityEngine.Random.Range(0,_spawnPoints.Length-1)].position;
+    }
 
     void Awake()
     {
-        if(isMe)
-            _cameraEffect = Camera.main.GetComponent<CameraEffect>();
         _rigidbody = GetComponent<Rigidbody2D>();
+        if(isMe)
+        {
+            _cameraEffect = Camera.main.GetComponent<CameraEffect>();
+            SetPos(GetRandomSpawnPoint());
+        }
+        
     }
 
     public void Update()
     {
-        if(_isDead)
-            Destroy(gameObject);
         //자신일 경우에만 쿨타임 적용
         if (isMe && _cooltime < _maxCooltime)
         {
@@ -117,6 +147,11 @@ public class Character : MonoBehaviour
     {
         _rigidbody.position = new Vector2(x, y);
     }
+    public void SetPos(Vector2 pos)
+    {
+        _rigidbody.position = pos;
+    }
+
 
     //CharacterAnimation 다시 추가 해서 별도로 다시 만들것 
     public void PlayAnimation(aniType aniType)
@@ -216,7 +251,6 @@ public class Character : MonoBehaviour
     {
         if (isMe)
             AttackEnemy(_rightAttackCollision);
-
     }
 
     public void AttackBack()
@@ -251,7 +285,6 @@ public class Character : MonoBehaviour
 
     public void AttackEnemyEnd()
     {
-
         _hittedEnemy.Clear();
     }
 
@@ -308,7 +341,10 @@ public class Character : MonoBehaviour
     {
         var deadBody = Instantiate<DeadBody>(_deadBody, transform.position, transform.rotation);
         deadBody.DestroyBody(_volume);
-        _isDead = true;
+        gameObject.SetActive(false);
+        if(isMe)
+            _socketManager.StartCoroutine(Respawn());
+        _dead = true;
     }
 
     public void setIdAndName(string id, string name)
@@ -321,10 +357,10 @@ public class Character : MonoBehaviour
     public CharacterData GetData()
     {
         var pos = transform.position;
-        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y, _facingRight, _speed, _defense, _name);
+        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y, _facingRight, _speed, _defense, _name, _dead);
     }
 
-    public void SetData(CharacterData characterData,Vector2 myPos)
+    public void SetData(CharacterData characterData, Vector2 myPos)
     {
         _id = characterData.id;
         SetPos(characterData.x, characterData.y);
@@ -334,14 +370,17 @@ public class Character : MonoBehaviour
         _speed = characterData.speed;
         _facingRight = characterData.facingRight;
         _defense = characterData.defense;
-        if(_name == "")
+        if (_name == "")
         {
             _name = characterData.name;
             _nameText.text = _name;
         }
-        _volume = Vector2.Distance(myPos,transform.position);
-        if(!isMe)
+        _volume = Vector2.Distance(myPos, transform.position);
+        _dead = characterData.dead;
+        if (!isMe)
             SetVolumeWithDistance(_volume);
+
+        gameObject.SetActive(!_dead);
     }
 
     public void SetVolumeWithDistance(float distance)
@@ -355,7 +394,7 @@ public class Character : MonoBehaviour
 
 public struct CharacterData
 {
-    public CharacterData(string id, int hp, int maxhp, float x, float y, bool facingRight, float speed, bool defense,string name)
+    public CharacterData(string id, int hp, int maxhp, float x, float y, bool facingRight, float speed, bool defense,string name, bool dead)
     {
         this.id = id;
         this.hp = hp;
@@ -366,6 +405,7 @@ public struct CharacterData
         this.speed = speed;
         this.defense = defense;
         this.name = name;
+        this.dead = dead;
     }
     public string id;
     public int hp;
@@ -376,4 +416,5 @@ public struct CharacterData
     public float speed;
     public bool defense;
     public string name;
+    public bool dead;
 }

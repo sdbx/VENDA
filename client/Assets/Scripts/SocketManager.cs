@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using socket.io;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
@@ -22,6 +21,8 @@ public class SocketManager : MonoBehaviour
     public Dictionary<string, Character> characterList = new Dictionary<string, Character>();
     [SerializeField]
     private CameraEffect _cameraEffect;
+
+
 
     private string _preSettedName = "";
 
@@ -58,14 +59,19 @@ public class SocketManager : MonoBehaviour
             if (userData.id == id)
                 return;
 
+
             if (!characterList.ContainsKey(userData.id))
             {
                 var newChar = Instantiate<Character>(prefab);
                 characterList.Add(userData.id, newChar);
             }
 
-
             Character cha = characterList[userData.id];
+            if (userData.dead)
+            {
+                cha.gameObject.SetActive(false);
+                return;
+            }
             cha.SetData(userData, player.transform.position);
         });
 
@@ -79,7 +85,6 @@ public class SocketManager : MonoBehaviour
 
             player.setIdAndName(id, name_);
             player.gameObject.SetActive(true);
-
         });
 
         socket.On("hit", (string data) =>
@@ -117,8 +122,9 @@ public class SocketManager : MonoBehaviour
             string id_ = (string)JObject.Parse(data)["id"];
             string by_ = (string)JObject.Parse(data)["by"];
             Character deathChar;
-            if (id == id_)
+            if (id == id_) {
                 deathChar = player;
+            }  
             else
                 deathChar = characterList[id_];
 
@@ -128,15 +134,14 @@ public class SocketManager : MonoBehaviour
                 _cameraEffect.Shake(0.5f);
                 player.Heal(30);
             }
-            characterList.Remove(id_);
-            Destroy(deathChar.gameObject);
-            socket.Disconnect();
         });
+    
     }
 
     void Update()
     {
         socket.Update();
+        Debug.Log(player._dead);
         if (connected)
         {
             socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));

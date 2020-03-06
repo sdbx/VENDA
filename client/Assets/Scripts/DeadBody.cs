@@ -20,6 +20,9 @@ public class DeadBody : MonoBehaviour
         _audio.Play();
         StartCoroutine(Timer());
         foreach(var part in _parts)
-        part.AddForce(Random.insideUnitCircle*Random.Range(200,300));
+        {
+            Debug.Log(part.name);
+            part.AddForce(Random.insideUnitCircle*Random.Range(200,300));
+        }
     }
 }

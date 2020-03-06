@@ -311,7 +311,6 @@ public class CharacterController : MonoBehaviour
             return false;
         }
         var angle = Mathf.Acos( Vector2.Dot(ray.normal,Vector2.up))*Mathf.Rad2Deg;
-        Debug.Log(angle);
         return Mathf.Abs(angle)<_maxClimbAngle;
     }
     private bool RaycastGround(Vector3 pos,float distance)

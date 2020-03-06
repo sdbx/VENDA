@@ -88,7 +88,7 @@ namespace Amguna {
         }
         
         public void Disconnect() {
-            byte[] byteData = new byte[] {0x03};
+            byte[] byteData = Combine(new byte[] {0x03}, _secret);
             _client.Send(byteData, byteData.Length, _remoteEP);
         }
 
@@ -99,7 +99,7 @@ namespace Amguna {
 
         private byte[] Combine(byte[] first, byte[] second)
         {
-            byte[] ret = new byte[first.Length + second.Length];
+            byte[] ret = new byte[first.Length + second.Length];    
             Buffer.BlockCopy(first, 0, ret, 0, first.Length);
             Buffer.BlockCopy(second, 0, ret, first.Length, second.Length);
             return ret;

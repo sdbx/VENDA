@@ -1,7 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.Experimental.Rendering.Universal;
+using DG.Tweening;
 
 public class CharacterAnimationAndSound : MonoBehaviour
 {
@@ -54,6 +55,8 @@ public class CharacterAnimationAndSound : MonoBehaviour
     private ParticleSystem _guardingEffect;
     [SerializeField]
     private SingleUseParticle _guardSuccessEffect;
+    [SerializeField]
+    private Light2D _guardLight;
 
     //aniamtor
     [SerializeField]
@@ -112,6 +115,7 @@ public class CharacterAnimationAndSound : MonoBehaviour
     }
     public void PlayBloodEffect()
     {
+        Debug.Log("칼맞음 큭");
         _bloodParticle.DuplicateAndPlay();
         PlaySound(_blood,_bloodVolume);
     }
@@ -121,12 +125,14 @@ public class CharacterAnimationAndSound : MonoBehaviour
     {
         _shieldPop.DuplicateAndPlay();
         _guardingEffect.Play();
+        DOTween.To(()=>_guardLight.intensity, x=> _guardLight.intensity = x, 1, 0.25f);
         PlaySound(_defenseOn,_defenseOnVolume);
     }
     public void PlayDefenseExitEffect()
     {
         _shieldPop.DuplicateAndPlay();
         _guardingEffect.Stop();
+        DOTween.To(()=>_guardLight.intensity, x=> _guardLight.intensity = x, 0, 0.25f);
         PlaySound(_defenseOff,_defenseOffVolume);
     }
     public void PlayDefenseSuccess()

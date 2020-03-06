@@ -14,10 +14,9 @@ public class MainScreenCamera : MonoBehaviour
 
     
     // Start is called before the first frame update
-    void Awake()
+    void Start()
     {
         _camera = GetComponent<Camera>();
-
         SetCamPivot(1,0);
     }
 

@@ -6,6 +6,7 @@ public class AttackCollision : MonoBehaviour
 {
     [SerializeField]
     List<Character> characters = new List<Character>();
+    
 
     private void OnTriggerEnter2D(Collider2D other)
     {

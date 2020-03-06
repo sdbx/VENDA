@@ -4,7 +4,6 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Ground
   - Enemy
   - NickNameSetter
   layers:
@@ -16,17 +15,17 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
-  - 
-  - 
-  - FrontEffect
-  - Char
   - Enemy
-  - BackEffect
-  - 
   - Ground
-  - DeadBody
+  - Char
+  - Deadbody
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
   - 
   - 
   - 
@@ -41,36 +40,30 @@ TagManager:
   - 
   - 
   m_SortingLayers:
-  - name: Default
-    uniqueID: 0
+  - name: Background
+    uniqueID: 2566394177
     locked: 0
   - name: Wall
-    uniqueID: 2616254799
+    uniqueID: 2463956817
     locked: 0
-  - name: Obstacle
-    uniqueID: 392773333
-    locked: 0
-  - name: BackEffects
-    uniqueID: 3662833015
+  - name: Effect(Back)
+    uniqueID: 819924573
     locked: 0
   - name: Char
-    uniqueID: 3330369895
+    uniqueID: 3740067717
     locked: 0
   - name: Land
-    uniqueID: 82200161
+    uniqueID: 676584907
     locked: 0
-  - name: Deco
-    uniqueID: 4029622097
+  - name: Effect(Front)
+    uniqueID: 4266191057
     locked: 0
-  - name: FrontEffects
-    uniqueID: 3917817309
+  - name: FrontMap(Foreground)
+    uniqueID: 2451191993
     locked: 0
-  - name: FrontFrontEffects
-    uniqueID: 1209413709
+  - name: FrontUI
+    uniqueID: 2964007011
     locked: 0
-  - name: UI
-    uniqueID: 1206777693
-    locked: 0
-  - name: FrontMap
-    uniqueID: 3842907593
+  - name: Default
+    uniqueID: 0
     locked: 0

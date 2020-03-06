@@ -1,9 +1,10 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering.Universal;
 
 public class FlikerLight : MonoBehaviour
 {
     [SerializeField]
-    Light flickeringLight;
+    Light2D flickeringLight;
 
     [SerializeField]
     private float _min;
@@ -19,6 +20,6 @@ public class FlikerLight : MonoBehaviour
         float lickerIntensity = Random.Range(_min, _max);
         float lickerRange = Random.Range(_rmin, _rmax);
         flickeringLight.intensity = lickerIntensity;
-        flickeringLight.range = lickerRange;
+        flickeringLight.pointLightInnerRadius = lickerRange;
     }
 }
