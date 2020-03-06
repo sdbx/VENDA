@@ -34,10 +34,8 @@ public class Character : MonoBehaviour
     private float _shieldTime = 2;
 
     //users info
-    [SerializeField]
-    private string _name= "";
-    [SerializeField]
-    private string _id;
+    public string _name= "";
+    public string _id;
     [SerializeField]
     private int _maxHp = 100;
     [SerializeField]
@@ -95,7 +93,7 @@ public class Character : MonoBehaviour
         _defense = false;
         _dead = false;
         gameObject.SetActive(true);
-        hpbar.setValue(_hp/_maxHp);
+        hpbar.setValue(1);
         SetPos(GetRandomSpawnPoint());
     }
 
@@ -296,7 +294,7 @@ public class Character : MonoBehaviour
 
         foreach (var enemy in hittedEnemy)
         {
-            Debug.Log(enemy._id);
+            //Debug.Log(enemy._id);
             if (_socketManager.characterList[enemy._id]._defense)
             {
                 SendAnimeAndPlay(aniType.DefenseSuccess);
@@ -316,7 +314,10 @@ public class Character : MonoBehaviour
         {
             //뒤짐처리
             if(isMe)
-                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new { by = hitter}));
+            {
+                Debug.Log("hitter:"+hitter);
+                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new { id = hitter}));
+            }
             return;
         }
 
@@ -334,7 +335,7 @@ public class Character : MonoBehaviour
     {
         _hp += amount;
         _hp = Mathf.Clamp(_hp,0,_maxHp);
-        hpbar.setValue(_hp/_maxHp);
+        hpbar.setValue(_hp/(float)_maxHp);
     }
 
     public void DGim()

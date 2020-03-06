@@ -67,6 +67,11 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 5249208680272286544, guid: 548a79a452830dc449c3eefaa4940d15,
+        type: 3}
+      propertyPath: m_BodyType
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5249208680272286547, guid: 548a79a452830dc449c3eefaa4940d15,
         type: 3}
       propertyPath: isMe

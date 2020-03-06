@@ -21,7 +21,7 @@ public class DeadBody : MonoBehaviour
         StartCoroutine(Timer());
         foreach(var part in _parts)
         {
-            Debug.Log(part.name);
+
             part.AddForce(Random.insideUnitCircle*Random.Range(200,300));
         }
     }

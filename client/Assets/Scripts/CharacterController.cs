@@ -33,10 +33,12 @@ public class CharacterController : MonoBehaviour
     private Transform _transform;
     private Character _character;
 
+    [SerializeField]
     private int _dashPoint = 0;
 
     private int _xMoveDir = 0;
     private Dir _dashDir = Dir.None;
+    private Dir _arrowDir = Dir.None;
     
     private bool _jump = false;
 
@@ -122,6 +124,9 @@ public class CharacterController : MonoBehaviour
             _groundChecked = false;
         }
 
+        if(_isGrounded)
+            _dashPoint = 2;
+
         KeyInput();
     }
 
@@ -134,120 +139,173 @@ public class CharacterController : MonoBehaviour
             _xMoveDir = 0;
         }
 
+
+        if(_isGrounded)
+        {
+            //fromGround
+            switch (_dashDir)
+            {
+                case Dir.Right:
+                    Dash(_dashPower/2, _dashPower);
+                    break;
+                case Dir.Left:
+                    Dash(_dashPower/2, -_dashPower);
+                    break;
+                case Dir.Up:
+                    Dash(_dashJumpPower+_dashPower, 0);
+                    break;
+            }
+        }
+        else if(_dashPoint == 2)
+        {
+            switch (_dashDir)
+            {
+                case Dir.Right:
+                    Dash(_dashPower, _dashPower);
+                    break;
+                case Dir.Left:
+                    Dash(_dashPower, -_dashPower);
+                    break;
+                case Dir.Up:
+                    Dash(_dashJumpPower+_dashPower, 0);
+                    break;
+            }
+        }
+        else if(_dashPoint == 1)
+        {
+            switch (_dashDir)
+            {
+                case Dir.Right:
+                    Dash(_dashJumpPower, _dashPower);
+                    break;
+                case Dir.Left:
+                    Dash(_dashJumpPower, -_dashPower);
+                    break;
+                case Dir.Up:
+                    Dash(_dashPower, 0);
+                    break;
+            }
+        }
+        
         if (_jump)
         {
             if (_isGrounded)
             {
-                Jump(_jumpPower/2);  
-                _dashPoint = 2; 
+                Jump(_jumpPower / 2);
                 _isGrounded = false;
             }
             _jump = false;
             return;
         }
 
-        if(_dashDir!=Dir.None&&_isGrounded)
-        {
-            Jump(_jumpPower);
-            _dashPoint = 2;
-            _isGrounded = false;
-            //_dashDir = Dir.None;
-            return;
-        }
-        
-        switch(_dashDir)
-        {
-            case Dir.Right:
-                Dash(_dashJumpPower, _dashPower, true);
-                break;
-            case Dir.Left:
-                Dash(_dashJumpPower, -_dashPower, true);
-                break;
-            case Dir.Up:
-                Dash(_dashJumpPower + _dashPower, 0, false);
-                break;
-        }
+
         _dashDir = Dir.None;
     }
 
     void KeyInput()
     {
-        //right attack
-        if (Input.GetKey("d"))
+        if (Input.GetKey(KeyCode.RightArrow))
         {
-            _character.StartRightAttack();
+            _arrowDir = Dir.Right;
+        }
+        else if (Input.GetKey(KeyCode.LeftArrow))
+        {
+            _arrowDir = Dir.Left;
+        }
+        else if (Input.GetKey(KeyCode.UpArrow))
+        {
+           _arrowDir = Dir.Up;
+        }
+        else if (Input.GetKey(KeyCode.DownArrow))
+        {
+           _arrowDir = Dir.Down;
+        }
+        else
+        {
+            _arrowDir = Dir.None;
         }
 
-        //left attack
-        if (Input.GetKey("a"))
+
+
+        //dash
+        if (Input.GetKeyDown("s"))
         {
-            _character.StartLeftAttack();
+            _dashDir = _arrowDir;
+            if (_arrowDir == Dir.None)
+            {
+                if(_isGrounded)
+                    _jump = true;
+                else
+                    _dashDir = Dir.Up;
+            }
+        }
+        else if (Input.GetKeyDown("w")||Input.GetKeyDown(KeyCode.Space))
+        {
+            _jump = true;
+        }
+        else if (Input.GetKeyDown("a"))
+        {
+            switch (_arrowDir)
+            {
+                case Dir.Right:
+                    _character.StartRightAttack();
+                    break;
+                case Dir.Left:
+                    _character.StartLeftAttack();
+                    break;
+                case Dir.Up:
+                    _character.StartUpAttack();
+                    break;
+                case Dir.Down:
+                    _character.StartDownAttack();
+                    break;
+            }
         }
 
-        //up attack
-        if (Input.GetKey("w"))
-        {
-            _character.StartUpAttack();
-        }
 
-        //down attack
-        if (Input.GetKey("s"))
-        {
-            _character.StartDownAttack();
-        }
 
+        if (_arrowDir == Dir.Right)
+            _xMoveDir = 1;
+        else if (_arrowDir == Dir.Left)
+            _xMoveDir = -1;
+
+
+        
+        _arrowDir = Dir.None;
         //char movement
         //dash keys
-        switch(GetDashKeyInput(KeyCode.RightArrow))
-        {
-            case dashKeyInputType.Single:
-            _xMoveDir = 1;
-            break;
-            case dashKeyInputType.Double:
-            _dashDir = Dir.Right;
-            break;
-        }
-        
-        switch(GetDashKeyInput(KeyCode.LeftArrow))
-        {
-            case dashKeyInputType.Single:
-            _xMoveDir = -1;
-            break;
-            case dashKeyInputType.Double:
-            _dashDir = Dir.Left;
-            break;
-        }
-
-        switch(GetDashKeyInput(KeyCode.UpArrow))
-        {
-            case dashKeyInputType.Single:
-            _jump = true;
-            break;
-            case dashKeyInputType.Double:
-            _dashDir = Dir.Up;
-            break;
-        }
 
         //defense key
-        if (Input.GetKey(KeyCode.DownArrow))
+        if (Input.GetKeyDown(KeyCode.D))
         {
             _character.StartDefense();
         }
     }
 
-    private dashKeyInputType GetDashKeyInput(KeyCode keyCode)
+    private dashKeyInputType GetArrowKeyInput(KeyCode keyCode)
     {
+        // if(!Input.GetKey(keyCode))
+        //     return dashKeyInputType.None;
+
+        // if(Input.GetKeyDown(keyCode))
+        // {
+        //     if (CheckDoublePress(keyCode))
+        //     {
+        //         return dashKeyInputType.Double;
+        //     }
+        //     _prevKey = keyCode;
+        //     _prevKeyTime = Time.time;
+            
+        // }
+        // return dashKeyInputType.Single;
+
         if(!Input.GetKey(keyCode))
             return dashKeyInputType.None;
 
-        if(Input.GetKeyDown(keyCode))
+        if(Input.GetKeyDown(KeyCode.A))
         {
-            if (CheckDoublePress(keyCode))
-            {
-                return dashKeyInputType.Double;
-            }
-            _prevKey = keyCode;
-            _prevKeyTime = Time.time;
+            Debug.Log("dash");
+            return dashKeyInputType.Double;
             
         }
         return dashKeyInputType.Single;
@@ -263,21 +321,14 @@ public class CharacterController : MonoBehaviour
         _rigidbody.AddForce(new Vector2(0,power), ForceMode2D.Impulse);
     }
 
-    void Dash(float power, float frontPower,bool isHorizontal)
+    void Dash(float power, float frontPower)
     {
         if (_dashPoint > 0) {
             _rigidbody.velocity = new Vector2(frontPower,power);
             _dashPoint -= 1;
             _character.Update();
 
-            if(isHorizontal)
-            {
-                _character.SendAnimeAndPlay(aniType.DashHorizontal);
-            }
-            else
-            {
-                _character.SendAnimeAndPlay(aniType.DashDown);
-            }        
+            _character.SendAnimeAndPlay(aniType.Dash);
         }
     }
 

@@ -92,7 +92,7 @@ public class SocketManager : MonoBehaviour
             int dmg = (int)JObject.Parse(data)["dmg"];
             string hitter = (string)JObject.Parse(data)["id"];
             player.GetDmg(dmg, hitter);
-            Debug.Log(data);
+            
         });
 
         socket.On("animate", (string data) =>
@@ -119,6 +119,7 @@ public class SocketManager : MonoBehaviour
 
         socket.On("death", (string data) =>
         {
+            Debug.Log(data);
             string id_ = (string)JObject.Parse(data)["id"];
             string by_ = (string)JObject.Parse(data)["by"];
             Character deathChar;
@@ -133,6 +134,7 @@ public class SocketManager : MonoBehaviour
             {
                 _cameraEffect.Shake(0.5f);
                 player.Heal(30);
+                Debug.Log("heal");
             }
         });
     
@@ -141,7 +143,7 @@ public class SocketManager : MonoBehaviour
     void Update()
     {
         socket.Update();
-        Debug.Log(player._dead);
+
         if (connected)
         {
             socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));

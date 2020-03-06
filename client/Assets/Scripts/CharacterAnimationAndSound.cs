@@ -40,12 +40,10 @@ public class CharacterAnimationAndSound : MonoBehaviour
 
     //dash
     [SerializeField]
-    private SingleUseParticle _horizontalDashParticle;
-    [SerializeField]
-    private SingleUseParticle _downDashParticle;
-    [SerializeField]
+    private ParticleSystem _dashEffect;
 
-    //blood
+     //blood   
+    [SerializeField]
     private SingleUseParticle _bloodParticle;
 
     //defense
@@ -103,19 +101,14 @@ public class CharacterAnimationAndSound : MonoBehaviour
     }
 
     //dash
-    public void PlayDashHorizontal()
+    public void PlayDash()
     {
-        _horizontalDashParticle.DuplicateAndPlay();
+        _dashEffect.Play();
         PlaySound(_dash,_dashVolume);
     }
-    public void PlayDashDown()
-    {
-        _downDashParticle.DuplicateAndPlay();
-        PlaySound(_dash,_dashVolume);
-    }
+
     public void PlayBloodEffect()
     {
-        Debug.Log("칼맞음 큭");
         _bloodParticle.DuplicateAndPlay();
         PlaySound(_blood,_bloodVolume);
     }
@@ -171,17 +164,13 @@ public class CharacterAnimationAndSound : MonoBehaviour
                 break;
             //가로 대쉬
             case 6:
-                PlayDashHorizontal();
-                break;
-            //세로대쉬
-            case 7:
-                PlayDashDown();
+                PlayDash();
                 break;
             //피 이펙트
-            case 8:
+            case 7:
                 PlayBloodEffect();
                 break;
-            case 9:
+            case 8:
                 PlayDefenseSuccess();
                 break;
         }
@@ -197,8 +186,7 @@ public enum aniType
     UpAttack,
     DefenseStart,
     DefenseExit,
-    DashHorizontal,
-    DashDown,
+    Dash,
     Blood,
     DefenseSuccess,
 }
