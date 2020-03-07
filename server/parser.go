@@ -66,6 +66,8 @@ func (s *Parser) ParseMessage(addr net.Addr, buf []byte) (Message, error) {
 	}
 	messageType := buf[0]
 	buf = buf[1:]
+
+	buf = buf[1:]
 	switch messageType {
 	case 0x01:
 		return &HandshakeMessage{Addr: addr}, nil

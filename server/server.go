@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -119,13 +118,13 @@ func (s *Server) Run() {
 	defer s.pc.Close()
 	quit := make(chan bool)
 	defer func() { close(quit) }()
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < 4; i++ {
 		go s.listenConn(quit)
 	}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < 4; i++ {
 		go s.listenMessageChan(quit)
 	}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < 4; i++ {
 		go s.listenSendChan(quit)
 	}
 
