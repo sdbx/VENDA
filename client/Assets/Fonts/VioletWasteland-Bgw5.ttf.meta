@@ -1,0 +1,22 @@
+fileFormatVersion: 2
+guid: 5f0150afc38afd84c9581c74a5a2f10e
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 50
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: Violet Wasteland
+  fontNames:
+  - Violet Wasteland
+  fallbackFontReferences: []
+  customCharacters: '1234567890KIL '
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -9,8 +9,13 @@ public class Fps : MonoBehaviour
     public int fFont_Size;
     [Range(0, 1)]
     public float Red, Green, Blue;
-    public Texture tex;
+    public Texture2D tex;
     float deltaTime = 0.0f;
+
+    [SerializeField]
+    float _width = 10;
+    [SerializeField]
+    float _height = 10;
 
 
     bool on = false;
@@ -33,19 +38,17 @@ public class Fps : MonoBehaviour
     {
         if (!on)
             return;
-        int w = Screen.width, h = Screen.height;
 
-        GUIStyle style = new GUIStyle();
-
-        Rect rect = new Rect(0, 0, w, h * 2 / 100);
-        style.alignment = TextAnchor.UpperLeft;
-        style.fontSize = h * 2 / fFont_Size;
-        style.normal.textColor = new Color(Red, Green, Blue, 1.0f);
         float msec = deltaTime * 1000.0f;
         float fps = 1.0f / deltaTime;
-        string text = string.Format("{0:0.0} ms ({1:0.} fps)", msec, fps);
-
-        GUI.DrawTexture(new Rect(0, 0, 210, 35), tex);
-        GUI.Label(rect, text, style);
+        string text = string.Format("{0} fps", (int)fps);
+        var style = new GUIStyle();
+        style.fontSize = fFont_Size;
+        //style.normal.background = tex;
+        style.normal.textColor = new Color(Red,Green,Blue,1);
+        var content = new GUIContent(text, "This is a fps");
+        
+        GUI.DrawTexture(new Rect(0,0,_width,_height),tex);
+        GUI.Label(new Rect(0,0,100,50),text,style);
     }
 }

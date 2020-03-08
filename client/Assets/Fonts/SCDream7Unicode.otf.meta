@@ -11,8 +11,9 @@ TrueTypeFontImporter:
   fontName: S-Core Dream
   fontNames:
   - S-Core Dream
-  fallbackFontReferences: []
-  customCharacters: 
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: b16021d92eec4c546822c18ff237ff73, type: 3}
+  customCharacters: 1234567890KIL
   fontRenderingMode: 0
   ascentCalculationMode: 1
   useLegacyBoundsCalculation: 0

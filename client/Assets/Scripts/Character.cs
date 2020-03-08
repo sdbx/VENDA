@@ -37,9 +37,9 @@ public class Character : MonoBehaviour
     public string _name= "";
     public string _id;
     [SerializeField]
-    private int _maxHp = 100;
+    private float _maxHp = 100;
     [SerializeField]
-    private int _hp = 100;
+    private float _hp = 100;
     [SerializeField]
     private float _maxCooltime = 10;
     [SerializeField]
@@ -77,29 +77,40 @@ public class Character : MonoBehaviour
     private float _volume;
     public bool _dead{get;private set;} = false;
 
-    private IEnumerator Respawn()
+    [SerializeField]
+    private DeadBodyOnPlayer _deadBodyOnPlayer;
+
+    private string _lastHitter;
+
+    private IEnumerator RespawnC()
     {
         yield return new WaitForSeconds(5);
-        SetDefaultValue();
+        Respawn();
     }
 
-    private void SetDefaultValue()
+    private void Respawn()
     {
-        _hp = _maxHp;
+        SetHp(_maxHp);
         _facingRight = false;
         _cooltime = 0;
         _isCooltimeIncreased = false;
         _speed = 0;
         _defense = false;
         _dead = false;
+        _lastHitter = null;
+        gameObject.transform.position = GetRandomSpawnPoint();
         gameObject.SetActive(true);
-        hpbar.setValue(1);
-        SetPos(GetRandomSpawnPoint());
+    }
+
+    private void SetHp(float hp)
+    {
+        _hp = Mathf.Clamp(hp,0,100);
+        hpbar.setValue(_hp/_maxHp);
     }
 
     private Vector2 GetRandomSpawnPoint()
     {
-        return _spawnPoints[UnityEngine.Random.Range(0,_spawnPoints.Length-1)].position;
+        return _spawnPoints[new System.Random().Next(0,_spawnPoints.Length-1)].position;
     }
 
     void Awake()
@@ -133,6 +144,13 @@ public class Character : MonoBehaviour
             if (Math.Abs(_rigidbody.velocity.x) >= 0.1)
                 _facingRight = _rigidbody.velocity.x > 0;
             _speed = Math.Abs(_rigidbody.velocity.x);
+
+            Heal(-0.5f*Time.deltaTime);
+            if(_hp<=0)
+            {
+                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new {id = _lastHitter}));
+                DGim();
+            }
         }
         _characterAnimationAndSound.Walk(_speed);
         var rotation = _characterTransform.rotation;
@@ -151,6 +169,17 @@ public class Character : MonoBehaviour
     }
 
 
+    private IEnumerator SetLastHitter(string hitter)
+    {
+        _lastHitter = hitter;
+        yield return new WaitForSeconds(10f);
+        if(hitter==_lastHitter)
+        {
+            _lastHitter = "Self";
+        }
+    }
+
+
     //CharacterAnimation 다시 추가 해서 별도로 다시 만들것 
     public void PlayAnimation(aniType aniType)
     {
@@ -164,35 +193,24 @@ public class Character : MonoBehaviour
     }
 
     //startAttacking
-    public void StartRightAttack()
+    public void StartFrontAttack()
     {
         if (_cooltime >= _maxCooltime)
         {
             _cooltime = 0;
-            if (_facingRight)
-            {
-                SendAnimeAndPlay(aniType.FrontAttack);
-            }
-            else
-            {
-                SendAnimeAndPlay(aniType.BackAttack);
-            }
+
+            SendAnimeAndPlay(aniType.FrontAttack);
+
             // _characterAnimation.AttackRight();
         }
     }
-    public void StartLeftAttack()
+    public void StartBackAttack()
     {
         if (_cooltime >= _maxCooltime)
         {
             _cooltime = 0;
-            if (!_facingRight)
-            {
-                SendAnimeAndPlay(aniType.FrontAttack);
-            }
-            else
-            {
-                SendAnimeAndPlay(aniType.BackAttack);
-            }
+
+            SendAnimeAndPlay(aniType.BackAttack);
             // _characterAnimation.AttackLeft();
         }
     }
@@ -307,35 +325,36 @@ public class Character : MonoBehaviour
         }
     }
 
+    public void KillSomeone()
+    {
+        _deadBodyOnPlayer.Add(_rigidbody);
+        Heal(100);
+    }
+
     public void GetDmg(int dmg,string hitter)
     {
-        _hp -= dmg;
+        SetHp(_hp-dmg);
+        StartCoroutine(SetLastHitter(hitter));
         if (_hp <= 0)
         {
             //뒤짐처리
             if(isMe)
             {
-                Debug.Log("hitter:"+hitter);
-                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new { id = hitter}));
+                Debug.Log("killer:"+hitter);
+                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new {id = hitter}));
+                DGim();
             }
             return;
         }
 
-        hpbar.setValue((float)_hp / (float)_maxHp);
-        if (_hp < 0 && isMe)
-        {
-            _rigidbody.velocity = new Vector2(0, 50);
-        }
         SendAnimeAndPlay(aniType.Blood);
         _cameraEffect.Shake(0.1f);
         _cameraEffect.ShowBloodOnScreen();
     }
 
-    public void Heal(int amount)
+    public void Heal(float amount)
     {
-        _hp += amount;
-        _hp = Mathf.Clamp(_hp,0,_maxHp);
-        hpbar.setValue(_hp/(float)_maxHp);
+        SetHp(_hp+amount);
     }
 
     public void DGim()
@@ -344,8 +363,9 @@ public class Character : MonoBehaviour
         deadBody.DestroyBody(_volume);
         gameObject.SetActive(false);
         if(isMe)
-            _socketManager.StartCoroutine(Respawn());
+            _socketManager.StartCoroutine(RespawnC());
         _dead = true;
+        _deadBodyOnPlayer.ResetBodies();
     }
 
     public void setIdAndName(string id, string name)
@@ -363,11 +383,16 @@ public class Character : MonoBehaviour
 
     public void SetData(CharacterData characterData, Vector2 myPos)
     {
+        if(characterData.dead)
+        {
+            gameObject.transform.position = new Vector2(characterData.x,characterData.y);
+            return;
+        }
+
         _id = characterData.id;
         SetPos(characterData.x, characterData.y);
-        _hp = characterData.hp;
         _maxHp = characterData.maxhp;
-        hpbar.setValue((float)_hp / (float)_maxHp);
+        SetHp(characterData.hp);
         _speed = characterData.speed;
         _facingRight = characterData.facingRight;
         _defense = characterData.defense;
@@ -395,7 +420,7 @@ public class Character : MonoBehaviour
 
 public struct CharacterData
 {
-    public CharacterData(string id, int hp, int maxhp, float x, float y, bool facingRight, float speed, bool defense,string name, bool dead)
+    public CharacterData(string id, float hp, float maxhp, float x, float y, bool facingRight, float speed, bool defense,string name, bool dead)
     {
         this.id = id;
         this.hp = hp;
@@ -409,8 +434,8 @@ public struct CharacterData
         this.dead = dead;
     }
     public string id;
-    public int hp;
-    public int maxhp;
+    public float hp;
+    public float maxhp;
     public float x;
     public float y;
     public bool facingRight;
