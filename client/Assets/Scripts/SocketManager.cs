@@ -58,7 +58,7 @@ public class SocketManager : MonoBehaviour
         }
         StartCoroutine(GetRequest("https://vendagame.com/version.txt", (ver) =>
         {
-            if (ver.Trim() != "v1.0.1")
+            if (ver.Trim() != "v1.0.2")
             {
                 SceneManager.LoadScene("Version");
                 return;
