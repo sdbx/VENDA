@@ -4134,8 +4134,8 @@ MonoBehaviour:
   _cameraEffect: {fileID: 0}
   _backgroundMusic: {fileID: 399438647}
   _killCounter: {fileID: 1844955041}
-  _connectToTestServer: 1
-  _testServerIP: 127.0.0.1:5858
+  _connectToTestServer: 0
+  _testServerIP: 15.164.164.174:5858
 --- !u!114 &399438647
 MonoBehaviour:
   m_ObjectHideFlags: 0
