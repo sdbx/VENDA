@@ -137,7 +137,6 @@ namespace Amguna {
 
         public void Update() {
             ReceivedEventArgs eventArgs;
-            Log(queue.Count+"");
             while (queue.TryDequeue(out eventArgs)) {
                 ReceiveEvent(eventArgs);
             }

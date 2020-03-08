@@ -193,19 +193,22 @@ public class SocketManager : MonoBehaviour
             Character deathChar;
             if (id == id_) {
                  _killCounter.ResetCount();
-                 return;
+                 deathChar = player;
             }  
             else
+            {
                 deathChar = characterList[id_];
+                deathChar.DGim();
+            }
 
 
-            deathChar.DGim();
             if (by_ == id)
             {
                 _backgroundMusic.PlayFunAndReturn();
                 _cameraEffect.Shake(0.5f);
                 _killCounter.Plus();
                 player.KillSomeone(deathChar._name);
+                
             }
             else
             {
@@ -238,7 +241,6 @@ public class SocketManager : MonoBehaviour
     }
     void Update()
     {
-        Debug.Log((int)(Time.deltaTime*1000));
         if(socket!=null)
             socket.Update();
 
