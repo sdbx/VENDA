@@ -58,7 +58,7 @@ public class SocketManager : MonoBehaviour
         }
         StartCoroutine(GetRequest("https://vendagame.com/version.txt", (ver) =>
         {
-            if (ver.Trim() != "v1.0.2")
+            if (ver.Trim() != Application.version)
             {
                 SceneManager.LoadScene("Version");
                 return;
@@ -236,16 +236,14 @@ public class SocketManager : MonoBehaviour
         }
         cha.SetData(userData, player.transform.position);
     }
-    bool a = true;
     void Update()
     {
         Debug.Log((int)(Time.deltaTime*1000));
         if(socket!=null)
             socket.Update();
 
-        if(a)//if (connected)
+        if (connected)
         {
-
             socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));
         }
     }
