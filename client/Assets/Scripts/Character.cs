@@ -78,7 +78,7 @@ public class Character : MonoBehaviour
     public bool _dead{get;private set;} = false;
 
     [SerializeField]
-    private DeadBodyOnPlayer _deadBodyOnPlayer;
+    private DeadHeadOnPlayer _deadBodyOnPlayer;
 
     private string _lastHitter;
 
@@ -149,6 +149,7 @@ public class Character : MonoBehaviour
             if(_hp<=0)
             {
                 _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new {id = _lastHitter}));
+                Debug.Log(_lastHitter);
                 DGim();
             }
         }
@@ -172,7 +173,7 @@ public class Character : MonoBehaviour
     private IEnumerator SetLastHitter(string hitter)
     {
         _lastHitter = hitter;
-        yield return new WaitForSeconds(10f);
+        yield return new WaitForSeconds(30f);
         if(hitter==_lastHitter)
         {
             _lastHitter = "Self";
@@ -325,9 +326,10 @@ public class Character : MonoBehaviour
         }
     }
 
-    public void KillSomeone()
+    public void KillSomeone(string diedName)
     {
-        _deadBodyOnPlayer.Add(_rigidbody);
+        _deadBodyOnPlayer.Add(_rigidbody,diedName);
+        Debug.Log(_name);
         if(isMe)
             Heal(100);
     }
@@ -414,8 +416,6 @@ public class Character : MonoBehaviour
     {
         _characterAnimationAndSound.SetVolume(1-distance/_maxDistanceToListen);
     }
-
-
 }
 
 

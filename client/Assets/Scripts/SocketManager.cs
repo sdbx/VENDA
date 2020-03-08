@@ -10,6 +10,9 @@ using UnityEngine.SceneManagement;
 public class SocketManager : MonoBehaviour
 {
     [SerializeField]
+    Fps fps;
+
+    [SerializeField]
     private Character prefab;
 
     private Dictionary<string, string> keylist = new Dictionary<string, string>();
@@ -31,13 +34,31 @@ public class SocketManager : MonoBehaviour
 
     private string _preSettedName = "";
 
+    [SerializeField]
+    private bool _connectToTestServer;
+    [SerializeField]
+    private string _testServerIP; 
+
     delegate void UrlRequestCallback(string s);
+
+
+    private float _pingTime;
+
+    private float _maxPing;
+    private float _pingtimer;
 
     private void Awake()
     {
+        _cameraEffect = Camera.main.GetComponent<CameraEffect>();
+        if (_connectToTestServer)
+        {
+            socket = new EventSocket(_testServerIP);
+            StartServer();
+            return;
+        }
         StartCoroutine(GetRequest("https://vendagame.com/version.txt", (ver) =>
         {
-            if(ver.Trim()!="v1.0.1")
+            if (ver.Trim() != "v1.0.1")
             {
                 SceneManager.LoadScene("Version");
                 return;
@@ -48,7 +69,6 @@ public class SocketManager : MonoBehaviour
                 StartServer();
             }));
         }));
-        _cameraEffect = Camera.main.GetComponent<CameraEffect>();
     }
     
     IEnumerator GetRequest(string uri,UrlRequestCallback callback)
@@ -74,7 +94,7 @@ public class SocketManager : MonoBehaviour
 
     void StartServer()
     {
-        Application.targetFrameRate = 70;
+        Application.targetFrameRate = 60;
 
         var nameSetter = GameObject.FindGameObjectWithTag("NickNameSetter");
         if(nameSetter)
@@ -93,25 +113,29 @@ public class SocketManager : MonoBehaviour
             Debug.Log("Hello, Again! ");
         });
 
-        socket.On("userData", (string data) =>
+        socket.On("userData", (data) =>
         {
-            var userData = JsonConvert.DeserializeObject<CharacterData>(data);
-            if (userData.id == id)
-                return;
+            var time = Time.time;
+            var ping  = (time-_pingTime)*1000;
 
+            if(_maxPing<ping)
+                _maxPing = ping;
 
-            if (!characterList.ContainsKey(userData.id))
+            if(_pingtimer>5)
             {
-                var newChar = Instantiate<Character>(prefab);
-                characterList.Add(userData.id, newChar);
+                _pingtimer = 0;
+                _maxPing = 0;
             }
+            else _pingtimer+=Time.deltaTime;
+            _pingTime = time;
+        
+            fps._maxPing = _maxPing;
 
-            Character cha = characterList[userData.id];
-            if (userData.dead)
+            var userDatas = JsonConvert.DeserializeObject<Dictionary<string,CharacterData>>(data);
+            foreach(var userData in userDatas)
             {
-                cha.gameObject.SetActive(false);
+                ProcessUserdata(userData.Value);
             }
-            cha.SetData(userData, player.transform.position);
         });
 
         socket.On("info", (string data) =>
@@ -181,25 +205,47 @@ public class SocketManager : MonoBehaviour
                 _backgroundMusic.PlayFunAndReturn();
                 _cameraEffect.Shake(0.5f);
                 _killCounter.Plus();
-                player.KillSomeone();
+                player.KillSomeone(deathChar._name);
             }
             else
             {
-                if(characterList.ContainsKey(by_))
-                    characterList[by_].KillSomeone();
+                if(by_!=null&&characterList.ContainsKey(by_))
+                    characterList[by_].KillSomeone(deathChar._name);
             }
             
         });
     
     }
 
+    void ProcessUserdata(CharacterData userData)
+    {
+        if (userData.id == id)
+            return;
+
+
+        if (!characterList.ContainsKey(userData.id))
+        {
+            var newChar = Instantiate<Character>(prefab);
+            characterList.Add(userData.id, newChar);
+        }
+
+        Character cha = characterList[userData.id];
+        if (userData.dead)
+        {
+            cha.gameObject.SetActive(false);
+        }
+        cha.SetData(userData, player.transform.position);
+    }
+    bool a = true;
     void Update()
     {
+        Debug.Log((int)(Time.deltaTime*1000));
         if(socket!=null)
             socket.Update();
 
-        if (connected)
+        if(a)//if (connected)
         {
+
             socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));
         }
     }

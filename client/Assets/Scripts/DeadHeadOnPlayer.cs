@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DeadBodyOnPlayer : MonoBehaviour 
+public class DeadHeadOnPlayer : MonoBehaviour 
 {
     [SerializeField]
     private Rigidbody2D _prefab;
@@ -25,12 +25,13 @@ public class DeadBodyOnPlayer : MonoBehaviour
         _bodies.Clear();
     }
 
-    public void Add(Rigidbody2D charb)
+    public void Add(Rigidbody2D charb,string name_)
     {
         _charRb = charb;
         if(!_lastBody)
             _lastBody = charb;
         _lastBody = Instantiate(_prefab, _lastBody.transform.position, Quaternion.Euler(0, 0, 0));
+        _lastBody.GetComponent<DeadHead>().SetName(name_);
         _bodies.Add(_lastBody);
     }
 

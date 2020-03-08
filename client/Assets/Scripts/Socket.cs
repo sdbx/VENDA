@@ -58,11 +58,11 @@ namespace Amguna {
             _addr = addr;
             _remoteEP = CreateIPEndPoint(_addr);
             _client = new UdpClient();
-            _client.Client.ReceiveBufferSize = 10240;
+            _client.Client.ReceiveBufferSize = 1024;
             _connect();
 
             _th = new Thread(Receive);
-            //_th.IsBackground = true;  
+            _th.IsBackground = true;  
             _th.Start();
         }
         
@@ -137,6 +137,7 @@ namespace Amguna {
 
         public void Update() {
             ReceivedEventArgs eventArgs;
+            Log(queue.Count+"");
             while (queue.TryDequeue(out eventArgs)) {
                 ReceiveEvent(eventArgs);
             }

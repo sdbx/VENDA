@@ -18,6 +18,9 @@ public class Fps : MonoBehaviour
     float _height = 10;
 
 
+    public float _ping = 0;
+    public float _maxPing = 0;
+
     bool on = false;
 
     private void Start()
@@ -41,7 +44,7 @@ public class Fps : MonoBehaviour
 
         float msec = deltaTime * 1000.0f;
         float fps = 1.0f / deltaTime;
-        string text = string.Format("{0} fps", (int)fps);
+        string text = string.Format("{0} fps {1} ping {2} maxping", (int)fps,(int)_ping,(int)_maxPing);
         var style = new GUIStyle();
         style.fontSize = fFont_Size;
         //style.normal.background = tex;
