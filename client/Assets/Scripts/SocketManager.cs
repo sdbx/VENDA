@@ -37,7 +37,7 @@ public class SocketManager : MonoBehaviour
     {
         StartCoroutine(GetRequest("https://vendagame.com/version.txt", (ver) =>
         {
-            if(ver.Trim()!="v1.0.0")
+            if(ver.Trim()!="v1.0.1")
             {
                 SceneManager.LoadScene("Version");
                 return;
@@ -174,14 +174,21 @@ public class SocketManager : MonoBehaviour
             else
                 deathChar = characterList[id_];
 
+
             deathChar.DGim();
             if (by_ == id)
             {
                 _backgroundMusic.PlayFunAndReturn();
                 _cameraEffect.Shake(0.5f);
-                player.KillSomeone();
                 _killCounter.Plus();
+                player.KillSomeone();
             }
+            else
+            {
+                if(characterList.ContainsKey(by_))
+                    characterList[by_].KillSomeone();
+            }
+            
         });
     
     }

@@ -328,7 +328,8 @@ public class Character : MonoBehaviour
     public void KillSomeone()
     {
         _deadBodyOnPlayer.Add(_rigidbody);
-        Heal(100);
+        if(isMe)
+            Heal(100);
     }
 
     public void GetDmg(int dmg,string hitter)

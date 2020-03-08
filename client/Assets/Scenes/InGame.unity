@@ -98,7 +98,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_UseShadowmask: 1
+  m_UseShadowmask: 0
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -9445,7 +9445,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 223eb07241e7bc143aa3c8bac5d7ebc2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cool: 0
 --- !u!58 &1139250032
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -18663,6 +18662,11 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5249208680272286544, guid: 548a79a452830dc449c3eefaa4940d15,
+        type: 3}
+      propertyPath: m_CollisionDetection
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5249208680272286547, guid: 548a79a452830dc449c3eefaa4940d15,
         type: 3}
       propertyPath: _socketManager
