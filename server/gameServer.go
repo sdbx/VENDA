@@ -4,8 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"server/msgs"
 	"sync"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+)
+
+const (
+	EventInfo byte = iota + 1
+	EventUserData
+	EventMyData
+	EventHit
+	EventDeath
+	EventAnimate
+	EventDisconnected
 )
 
 type M map[string]interface{}
@@ -16,7 +29,7 @@ type GameServer struct {
 	benchInfo []M
 	bench     []map[string]time.Time
 	packets   map[string][]time.Time
-	userData  map[string]M
+	userData  map[int]*msgs.CharacterData
 	serv      *Server
 }
 
@@ -27,100 +40,132 @@ func NewGameServer(serv *Server) *GameServer {
 		packets:   make(map[string][]time.Time),
 		bench:     []map[string]time.Time{},
 		benchInfo: []M{},
-		userData:  make(map[string]M),
+		userData:  make(map[int]*msgs.CharacterData),
 	}
 }
 
 func (g *GameServer) RegisterHandlers() {
-	g.serv.OnConnect(func(id string) {
-		g.EmitTo(id, "info", M{"name": GenerateName(), "id": id})
-	})
-	g.serv.On("animate", wrapFunc(func(id string, buf M) error {
-		g.Broadcast("animate", M{"id": buf["id"], "animeId": buf["animeId"]})
-		return nil
-	}))
-	g.serv.On("hit", wrapFunc(func(id string, buf M) error {
-		g.EmitTo(buf["target"].(string), "hit", M{"dmg": buf["dmg"], "id": id})
-		return nil
-	}))
-	g.serv.On("death", wrapFunc(func(id string, buf M) error {
-		g.Broadcast("death", M{"id": id, "by": buf["id"]})
-		return nil
-	}))
-	g.serv.OnDisconnect(func(id string) {
-		g.mu.Lock()
-		delete(g.userData, id)
-		g.mu.Unlock()
-		g.Broadcast("delPlayer", M{"id": id})
-
-	})
-	g.serv.On("myData", wrapFunc(func(id string, buf M) error {
-		g.mu.Lock()
-		if g.isBench {
-			g.packets[id] = append(g.packets[id], time.Now())
+	g.serv.OnConnect(func(id int) {
+		out := &msgs.InfoEvent{
+			Name: GenerateName(),
+			Id:   int32(id),
 		}
-		g.userData[id] = buf
-		g.mu.Unlock()
-		return nil
-	}))
-	if g.isBench {
-		g.serv.On("bench", wrapFunc(func(id string, buf M) error {
-			g.mu.Lock()
-			g.bench[int(buf["benchId"].(float64))][id] = time.Now()
-			g.mu.Unlock()
-			return nil
-		}))
-	}
-}
-
-func wrapFunc(fn func(id string, buf M) error) func(string, string) error {
-	return func(id string, buf string) error {
-		obj := M{}
-		err := json.Unmarshal([]byte(buf), &obj)
+		buf, _ := proto.Marshal(out)
+		g.serv.EmitTo(id, EventInfo, buf)
+	})
+	g.serv.On(EventAnimate, func(id int, buf []byte) error {
+		event := &msgs.AnimateEvent{}
+		err := proto.Unmarshal(buf, event)
 		if err != nil {
 			return err
 		}
-		return fn(id, obj)
-	}
-}
-
-func (g *GameServer) EmitTo(id string, event string, payload interface{}) {
-	buf, err := json.Marshal(payload)
-	if err != nil {
-		panic(err)
-	}
-	g.serv.EmitTo(id, event, string(buf))
-}
-
-func (g *GameServer) Broadcast(event string, payload interface{}) {
-	buf, err := json.Marshal(payload)
-	if err != nil {
-		panic(err)
-	}
-	g.serv.Broadcast(event, string(buf))
+		event.Id = int32(id)
+		buf, err = proto.Marshal(event)
+		if err != nil {
+			return err
+		}
+		g.serv.Broadcast(EventAnimate, buf)
+		return nil
+	})
+	g.serv.On(EventHit, func(id int, buf []byte) error {
+		event := &msgs.HitEvent{}
+		err := proto.Unmarshal(buf, event)
+		if err != nil {
+			return err
+		}
+		event.Id = int32(id)
+		buf, err = proto.Marshal(event)
+		if err != nil {
+			return err
+		}
+		g.serv.EmitTo(int(event.Target), EventHit, buf)
+		return nil
+	})
+	g.serv.On(EventDeath, func(id int, buf []byte) error {
+		event := &msgs.DeathEvent{}
+		err := proto.Unmarshal(buf, event)
+		if err != nil {
+			return err
+		}
+		event.Id = int32(id)
+		buf, err = proto.Marshal(event)
+		if err != nil {
+			return err
+		}
+		g.serv.Broadcast(EventDeath, buf)
+		return nil
+	})
+	g.serv.OnDisconnect(func(id int) {
+		g.mu.Lock()
+		delete(g.userData, id)
+		g.mu.Unlock()
+	})
+	g.serv.On(EventMyData, func(id int, buf []byte) error {
+		g.mu.Lock()
+		// if g.isBench {
+		// 	g.packets[id] = append(g.packets[id], time.Now())
+		// }
+		e := &msgs.MyDataEvent{}
+		err := proto.Unmarshal(buf, e)
+		if err != nil {
+			g.mu.Unlock()
+			return err
+		}
+		g.userData[id] = e.Data
+		g.mu.Unlock()
+		return nil
+	})
+	// if g.isBench {
+	// 	g.serv.On("bench", wrapFunc(func(id string, buf M) error {
+	// 		g.mu.Lock()
+	// 		g.bench[int(buf["benchId"].(float64))][id] = time.Now()
+	// 		g.mu.Unlock()
+	// 		return nil
+	// 	}))
+	// }
 }
 
 func (g *GameServer) Run() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(1000/60) * time.Millisecond)
+		// t := time.Now()
+		i := 0
+		ticker := time.NewTicker(5 * time.Millisecond)
 		ticker2 := time.NewTicker(30000 * time.Millisecond)
 		for {
 			select {
 			case <-ticker.C:
-				g.mu.Lock()
-				for key, data := range g.userData {
-					if g.isBench {
-						benchId := len(g.bench)
-						g.benchInfo = append(g.benchInfo, M{
-							"base":     time.Now(),
-							"nClients": len(g.userData),
-						})
-						g.bench = append(g.bench, make(map[string]time.Time))
-						data["benchId"] = benchId
-					}
-					data["id"] = key
-					g.Broadcast("userData", data)
+				if i < 2 {
+					i++
+					continue
 				}
+				i = 0
+				// log.Println(time.Now().Sub(t).Milliseconds())
+				// t = time.Now()
+				g.mu.Lock()
+				out := make([]*msgs.CharacterData, 0, len(g.userData))
+				for _, data := range g.userData {
+					out = append(out, data)
+				}
+
+				buf, err := proto.Marshal(&msgs.UserDataEvent{Users: out})
+				if err != nil {
+					fmt.Println(err)
+				}
+				g.serv.Broadcast(EventUserData, buf)
+				/*
+					for key, data := range g.userData {
+						if g.isBench {
+							benchId := len(g.bench)
+							g.benchInfo = append(g.benchInfo, M{
+								"base":     time.Now(),
+								"nClients": len(g.userData),
+							})
+							g.bench = append(g.bench, make(map[string]time.Time))
+							data["benchId"] = benchId
+						}
+						data["id"] = key
+
+					}*/
 				g.mu.Unlock()
 			case <-ticker2.C:
 				if g.isBench {

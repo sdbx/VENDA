@@ -5,6 +5,7 @@ using UnityEngine;
 using System;
 using System.Linq;
 using UnityEngine.UI;
+using Google.Protobuf;
 
 public class Character : MonoBehaviour
 {
@@ -35,7 +36,7 @@ public class Character : MonoBehaviour
 
     //users info
     public string _name= "";
-    public string _id;
+    public int _id;
     [SerializeField]
     private float _maxHp = 100;
     [SerializeField]
@@ -80,7 +81,7 @@ public class Character : MonoBehaviour
     [SerializeField]
     private DeadHeadOnPlayer _deadBodyOnPlayer;
 
-    private string _lastHitter;
+    private int _lastHitter;
 
     private IEnumerator RespawnC()
     {
@@ -97,7 +98,7 @@ public class Character : MonoBehaviour
         _speed = 0;
         _defense = false;
         _dead = false;
-        _lastHitter = null;
+        _lastHitter = -1;
         gameObject.transform.position = GetRandomSpawnPoint();
         gameObject.SetActive(true);
     }
@@ -148,7 +149,7 @@ public class Character : MonoBehaviour
             Heal(-0.5f*Time.deltaTime);
             if(_hp<=0)
             {
-                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new {id = _lastHitter}));
+                _socketManager.socket.Emit(EventByte.Death, new DeathEvent { By = _lastHitter, Id = _id }.ToByteArray());
                 Debug.Log(_lastHitter);
                 DGim();
             }
@@ -170,13 +171,13 @@ public class Character : MonoBehaviour
     }
 
 
-    private IEnumerator SetLastHitter(string hitter)
+    private IEnumerator SetLastHitter(int hitter)
     {
         _lastHitter = hitter;
         yield return new WaitForSeconds(30f);
         if(hitter==_lastHitter)
         {
-            _lastHitter = "Self";
+            _lastHitter = -1;
         }
     }
 
@@ -189,7 +190,7 @@ public class Character : MonoBehaviour
 
     public void SendAnimeAndPlay(aniType aniType)
     {
-        _socketManager.socket.Emit("animate", JsonConvert.SerializeObject(new { id = _id, animeId = aniType }));
+        _socketManager.socket.Emit(EventByte.Animate, new AnimateEvent { Id = _id, Anime = (int)aniType }.ToByteArray());
         PlayAnimation(aniType);
     }
 
@@ -321,7 +322,7 @@ public class Character : MonoBehaviour
             }
             else
             {
-                _socketManager.socket.Emit("hit", JsonConvert.SerializeObject(new { target = enemy._id, dmg = 30 }));
+                _socketManager.socket.Emit(EventByte.Hit, new HitEvent { Target = enemy._id, Dmg = 30, Id = _id}.ToByteArray());
             }
         }
     }
@@ -334,7 +335,7 @@ public class Character : MonoBehaviour
             Heal(100);
     }
 
-    public void GetDmg(int dmg,string hitter)
+    public void GetDmg(int dmg,int hitter)
     {
         SetHp(_hp-dmg);
         StartCoroutine(SetLastHitter(hitter));
@@ -344,7 +345,7 @@ public class Character : MonoBehaviour
             if(isMe)
             {
                 Debug.Log("killer:"+hitter);
-                _socketManager.socket.Emit("death", JsonConvert.SerializeObject(new {id = hitter}));
+                _socketManager.socket.Emit(EventByte.Death, new DeathEvent { By = hitter, Id = _id }.ToByteArray());
                 DGim();
             }
             return;
@@ -371,7 +372,7 @@ public class Character : MonoBehaviour
         _deadBodyOnPlayer.ResetBodies();
     }
 
-    public void setIdAndName(string id, string name)
+    public void setIdAndName(int id, string name)
     {
         _id = id;
         _name = name;
@@ -381,31 +382,42 @@ public class Character : MonoBehaviour
     public CharacterData GetData()
     {
         var pos = transform.position;
-        return new CharacterData(_id, _hp, _maxHp, pos.x, pos.y, _facingRight, _speed, _defense, _name, _dead);
+        return new CharacterData {
+            Id = _id,
+            Name = _name,
+            Hp = _hp,
+            MaxHp = _maxHp,
+            X = pos.x,
+            Y = pos.y,
+            FacingRight = _facingRight,
+            Speed = _speed,
+            Defense = _defense,
+            Dead = _dead
+        };
     }
 
     public void SetData(CharacterData characterData, Vector2 myPos)
     {
-        if(characterData.dead)
+        if(characterData.Dead)
         {
-            gameObject.transform.position = new Vector2(characterData.x,characterData.y);
+            gameObject.transform.position = new Vector2(characterData.X,characterData.Y);
             return;
         }
 
-        _id = characterData.id;
-        SetPos(characterData.x, characterData.y);
-        _maxHp = characterData.maxhp;
-        SetHp(characterData.hp);
-        _speed = characterData.speed;
-        _facingRight = characterData.facingRight;
-        _defense = characterData.defense;
+        _id = characterData.Id;
+        SetPos(characterData.X, characterData.Y);
+        _maxHp = characterData.MaxHp;
+        SetHp(characterData.Hp);
+        _speed = characterData.Speed;
+        _facingRight = characterData.FacingRight;
+        _defense = characterData.Defense;
         if (_name == "")
         {
-            _name = characterData.name;
+            _name = characterData.Name;
             _nameText.text = _name;
         }
         _volume = Vector2.Distance(myPos, transform.position);
-        _dead = characterData.dead;
+        _dead = characterData.Dead;
         if (!isMe)
             SetVolumeWithDistance(_volume);
 
@@ -416,32 +428,4 @@ public class Character : MonoBehaviour
     {
         _characterAnimationAndSound.SetVolume(1-distance/_maxDistanceToListen);
     }
-}
-
-
-public struct CharacterData
-{
-    public CharacterData(string id, float hp, float maxhp, float x, float y, bool facingRight, float speed, bool defense,string name, bool dead)
-    {
-        this.id = id;
-        this.hp = hp;
-        this.maxhp = maxhp;
-        this.x = x;
-        this.y = y;
-        this.facingRight = facingRight;
-        this.speed = speed;
-        this.defense = defense;
-        this.name = name;
-        this.dead = dead;
-    }
-    public string id;
-    public float hp;
-    public float maxhp;
-    public float x;
-    public float y;
-    public bool facingRight;
-    public float speed;
-    public bool defense;
-    public string name;
-    public bool dead;
 }

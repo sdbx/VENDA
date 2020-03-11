@@ -9,17 +9,17 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-
+using System.Linq;
 using UnityEngine;
 
 namespace Amguna {
     public class ReceivedEventArgs : EventArgs  
     {  
-        public ReceivedEventArgs(string s)  
+        public ReceivedEventArgs(byte[] s)  
         {  
             msg = s;  
         }  
-        public string msg; 
+        public byte[] msg; 
     }  
 
     public class EventSocket {
@@ -28,10 +28,14 @@ namespace Amguna {
         private IPEndPoint _remoteEP;
         private string _addr;
 
-        private string _id = null;
+        private int _id = -1;
         private byte[] _secret = null;
 
-        private Dictionary<string, Action<string>> _handlers = new Dictionary<string, Action<string>>();
+        private Dictionary<byte, Action<byte[]>> _handlers = new Dictionary<byte, Action<byte[]>>();
+
+        public Action<int> OnConnect;
+
+        public Action<int> OnDisconnect;
         private Thread _th;
 
         private static void Log(string msg) {
@@ -67,7 +71,7 @@ namespace Amguna {
         }
         
         private void _connect() {
-            if (_id == null) {
+            if (_id == -1) {
                 SendHandshake();
                 Log("sent Handshake");
             }
@@ -78,8 +82,7 @@ namespace Amguna {
             {
                 try {
                     var receivedResults = _client.Receive(ref _remoteEP);
-                    //Debug.Log(Encoding.UTF8.GetString(receivedResults));
-                    queue.Enqueue(new ReceivedEventArgs(Encoding.UTF8.GetString(receivedResults)));
+                    queue.Enqueue(new ReceivedEventArgs(receivedResults));
                 } catch (Exception e) {
                     Log($"ERROR {e.ToString()}");
                 }
@@ -106,32 +109,44 @@ namespace Amguna {
         }
 
 
-        public void Emit(string eventName, string data) {
-
-            if (_id != null) {
-                byte[] byteData = Combine(Combine(new byte[] {0x02}, _secret), Encoding.UTF8.GetBytes(eventName + ":" + data));
+        public void Emit(byte eventByte, byte[] data) {
+            if (_id != -1) {
+                byte[] byteData = Combine(Combine(Combine(new byte[] {0x02}, _secret), new byte[] {eventByte}), data);
                 _client.Send(byteData, byteData.Length, _remoteEP);
             }
         }
-        public void On(string eventName, Action<string> callback) {
-            _handlers[eventName] = callback;
+        public void On(byte eventByte, Action<byte[]> callback) {
+            _handlers[eventByte] = callback;
         }
 
         private void ReceiveEvent(ReceivedEventArgs eventArgs) {
             try {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(eventArgs.msg);
-                if (data["event"] == "connected") {
-                    var payload = JsonConvert.DeserializeObject<Dictionary<string, string>>(data["payload"]);
-                    _id = payload["id"];
-                    _secret = System.Convert.FromBase64String(payload["secret"]);
-                    Log($"CONNECTED as {_id}");
-                }
-
-                if ( _handlers.ContainsKey(data["event"])) {
-                    _handlers[data["event"]](data["payload"]);
+                var type = eventArgs.msg[0];
+                var iter = eventArgs.msg.Skip(1);
+                switch (eventArgs.msg[0]) {
+                    case 0x01:
+                        _id = (int)BitConverter.ToInt32(iter.Take(4).ToArray(), 0);
+                        iter = iter.Skip(4);
+                        _secret = iter.Take(16).ToArray();
+                        Log($"CONNECTED as {_id}");
+                        OnConnect(_id);
+                        break;
+                    case 0x02:
+                        var eventByte = iter.Take(1).ToArray()[0];
+                        var buffer = iter.Skip(1).ToArray();
+                        if ( _handlers.ContainsKey(eventByte)) {
+                            _handlers[eventByte](buffer);
+                        }
+                        break;
+                    
+                    case 0x03:
+                        var id = BitConverter.ToInt32(iter.Take(4).ToArray(), 0);
+                        OnDisconnect(id);
+                        break;
                 }
             } catch (Exception e) {
                 Log($"ERROR {e.ToString()} ");
+                // Log(eventArgs.msg.ToString());
             }
         }
 

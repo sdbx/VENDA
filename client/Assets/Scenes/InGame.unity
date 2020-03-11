@@ -945,7 +945,7 @@ CanvasGroup:
   m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
-  m_IgnoreParentGroups: 0
+  m_IgnoreParentGroups: 1
 --- !u!114 &202255576
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -978,7 +978,7 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 202255573}
-  m_CullTransparentMesh: 0
+  m_CullTransparentMesh: 1
 --- !u!4 &223354216 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2725303889720689682, guid: ab7a35fa4d6d60d47918d53860b41004,
@@ -4134,8 +4134,8 @@ MonoBehaviour:
   _cameraEffect: {fileID: 0}
   _backgroundMusic: {fileID: 399438647}
   _killCounter: {fileID: 1844955041}
-  _connectToTestServer: 0
-  _testServerIP: 15.164.164.174:5858
+  _connectToTestServer: 1
+  _testServerIP: 59.11.136.225:5858
 --- !u!114 &399438647
 MonoBehaviour:
   m_ObjectHideFlags: 0

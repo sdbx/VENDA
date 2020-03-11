@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -21,7 +20,7 @@ type messageSend struct {
 }
 
 type client struct {
-	id       string
+	id       int
 	secret   string
 	addr     net.Addr
 	lastPing time.Time
@@ -34,12 +33,15 @@ type Server struct {
 	eventChan   chan *EventMessage
 	pc          net.PacketConn
 	parser      *Parser
+	st          *Stats
+
+	lastId int32
 
 	clientsSliceOwner *clientsOwner
 
-	handlers     map[string]func(id string, buf string) error
-	onDisconnect func(id string)
-	onConnect    func(id string)
+	handlers     map[byte]func(id int, buf []byte) error
+	onDisconnect func(id int)
+	onConnect    func(id int)
 }
 
 func NewServer(addr string) *Server {
@@ -50,7 +52,9 @@ func NewServer(addr string) *Server {
 		eventChan:         make(chan *EventMessage, bufferSize),
 		parser:            NewParser(),
 		clientsSliceOwner: newClientsOwner(),
-		handlers:          make(map[string]func(string, string) error),
+		st:                NewStats(),
+		lastId:            0,
+		handlers:          make(map[byte]func(int, []byte) error),
 	}
 }
 
@@ -58,51 +62,56 @@ func (s *Server) Send(buf []byte, addr net.Addr) {
 	s.sendChan <- messageSend{buf, addr}
 }
 
-func (s *Server) On(event string, handler func(string, string) error) {
+func (s *Server) On(event byte, handler func(int, []byte) error) {
 	s.handlers[event] = handler
 }
 
-func (s *Server) OnDisconnect(handler func(id string)) {
+func (s *Server) OnDisconnect(handler func(id int)) {
 	s.onDisconnect = handler
 }
 
-func (s *Server) EmitTo(id string, event string, buf string) {
+func (s *Server) EmitTo(id int, event byte, buf []byte) {
 	cli, ok := <-s.clientsSliceOwner.GetClientByID(id)
 	if !ok {
 		return
 	}
-	buf2, err := json.Marshal(&EventMessage{Event: event, Payload: buf})
-	if err != nil {
-		return
-	}
-	s.Send(buf2, cli.addr)
+	s.emitTo(&EventMessage{Event: event, Payload: buf}, cli.addr)
 }
 
-func (s *Server) Broadcast(event string, buf string) {
-	msg := &EventMessage{Event: event, Payload: buf}
-	buf2, err := json.Marshal(msg)
-	if err != nil {
-		panic(err)
-	}
+func (s *Server) emitTo(msg Message, addr net.Addr) {
+	s.Send(msg.Marshal(), addr)
+}
+
+func (s *Server) Broadcast(event byte, buf []byte) {
+	s.broadcast(&EventMessage{Event: event, Payload: buf})
+}
+
+func (s *Server) broadcast(msg Message) {
+	buf := msg.Marshal()
 	for cli := range s.clientsSliceOwner.RangeClient() {
-		buf3 := make([]byte, len(buf2))
-		copy(buf3, buf2)
-		s.Send(buf3, cli.addr)
+		s.Send(buf, cli.addr)
 	}
 }
 
 const garbageDuration = 100 * time.Millisecond
+const statsTick = 10 * time.Millisecond
 
 func (s *Server) garbageClientCollect(done chan bool) {
 	ticker := time.NewTicker(garbageDuration)
+	ticker2 := time.NewTicker(statsTick)
 	for {
 		select {
 		case <-ticker.C:
 			for cli := range s.clientsSliceOwner.RangeClient() {
-				if time.Now().Sub(cli.lastPing) > time.Second {
-					s.deleteClient(cli)
+				if time.Now().Sub(cli.lastPing) > 2*time.Second {
+					go func() {
+						s.deleteClient(cli)
+						s.st.nGarbage.Value++
+					}()
 				}
 			}
+		case <-ticker2.C:
+			s.st.Monitor(s)
 		case <-done:
 			return
 		}
@@ -118,10 +127,10 @@ func (s *Server) Run() {
 	defer s.pc.Close()
 	quit := make(chan bool)
 	defer func() { close(quit) }()
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 2; i++ {
 		go s.listenConn(quit)
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 2; i++ {
 		go s.listenMessageChan(quit)
 	}
 	for i := 0; i < 4; i++ {
@@ -149,9 +158,12 @@ func (s *Server) listenConn(done <-chan bool) {
 			}
 			msg, err := s.parser.ParseMessage(addr, buf[:n])
 			if err != nil {
-				fmt.Println(err)
+				// fmt.Println(err)
 				continue
 			}
+			s.st.nRecvBytes.count(n)
+			s.st.nRecvPackets.count(1)
+			s.st.nMsg.count(1)
 			s.messageChan <- msg
 		}
 	}
@@ -168,6 +180,8 @@ func (s *Server) listenSendChan(done <-chan bool) {
 				fmt.Println(err)
 				continue
 			}
+			s.st.nSentBytes.count(len(msgSend.buf))
+			s.st.nSentPackets.count(1)
 		}
 	}
 }
@@ -183,7 +197,12 @@ func (s *Server) listenMessageChan(done <-chan bool) {
 	}
 }
 
+func (s *Server) log(cli client, str string) {
+	fmt.Println("[" + string(cli.id) + " " + cli.addr.String() + "] " + str)
+}
+
 func (s *Server) handleMessage(msg Message) {
+	s.st.nEvent.count(1)
 	tmp := msg.GetAddr().String()
 	if cli, ok := <-s.clientsSliceOwner.GetClientByAddr(tmp); ok {
 		s.clientsSliceOwner.UpdatePing(cli.id)
@@ -196,10 +215,12 @@ func (s *Server) handleMessage(msg Message) {
 			}
 		}
 	case *EventMessage:
-		if handler, ok := s.handlers[msg.Event]; ok {
-			err := handler(msg.ID, msg.Payload)
-			if err != nil {
-				fmt.Println(err)
+		if cli, ok := <-s.clientsSliceOwner.GetClientByID(msg.ID); ok {
+			if handler, ok := s.handlers[msg.Event]; ok {
+				err := handler(msg.ID, msg.Payload)
+				if err != nil {
+					s.log(cli, err.Error())
+				}
 			}
 		}
 	case *HandshakeMessage:
@@ -214,12 +235,13 @@ func (s *Server) handleMessage(msg Message) {
 			lastPing: time.Now(),
 		}
 		s.addClient(cli)
-		s.EmitTo(cli.id, "connected", `{"secret":"`+base64.StdEncoding.EncodeToString([]byte(secret))+`","id":"`+id+`"}`)
+		s.log(cli, "connected")
+		s.emitTo(&HandshakeMessage{Secret: secret, ID: id}, cli.addr)
 		if s.onConnect != nil {
 			s.onConnect(cli.id)
 		}
 	}
-
+	s.st.nDone.count(1)
 }
 
 func (s *Server) addClient(cli client) {
@@ -233,15 +255,16 @@ func (s *Server) deleteClient(cli client) {
 	if s.onDisconnect != nil {
 		s.onDisconnect(cli.id)
 	}
-	s.Broadcast("disconnect", `{"id":"`+cli.id+`"}`)
+	s.log(cli, "disconnected")
+	s.broadcast(&DisconnectMessage{ID: cli.id})
 }
 
-func (s *Server) createUser() (string, string) {
+func (s *Server) createUser() (string, int) {
 	secret := string(uuid.NewV4().Bytes()[:16])
-	id := uuid.NewV4().String()[:6]
-	return secret, id
+	id := atomic.AddInt32(&s.lastId, 1)
+	return secret, int(id)
 }
 
-func (s *Server) OnConnect(f func(string)) {
+func (s *Server) OnConnect(f func(int)) {
 	s.onConnect = f
 }

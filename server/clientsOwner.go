@@ -17,7 +17,7 @@ type removeClientOp struct {
 type getClientOp struct {
 	byAddr bool
 	addr   string
-	id     string
+	id     int
 	resp   chan client
 }
 
@@ -30,9 +30,9 @@ type clientsOwner struct {
 	removeClientChan chan removeClientOp
 	getClientChan    chan getClientOp
 	rangeClientChan  chan rangeClientOp
-	updatePingChan   chan string
+	updatePingChan   chan int
 
-	clients       map[string]client
+	clients       map[int]client
 	clientsByAddr map[string]client
 }
 
@@ -44,8 +44,8 @@ func newClientsOwner() *clientsOwner {
 		removeClientChan: make(chan removeClientOp, bufferSize),
 		getClientChan:    make(chan getClientOp, bufferSize),
 		rangeClientChan:  make(chan rangeClientOp, bufferSize),
-		updatePingChan:   make(chan string, bufferSize),
-		clients:          make(map[string]client, bufferSize),
+		updatePingChan:   make(chan int, bufferSize),
+		clients:          make(map[int]client, bufferSize),
 		clientsByAddr:    make(map[string]client, bufferSize),
 	}
 }
@@ -68,7 +68,7 @@ func (c *clientsOwner) RemoveClient(cli client) <-chan bool {
 	return out
 }
 
-func (c *clientsOwner) GetClientByID(id string) <-chan client {
+func (c *clientsOwner) GetClientByID(id int) <-chan client {
 	out := make(chan client, 1)
 	c.getClientChan <- getClientOp{
 		byAddr: false,
@@ -96,7 +96,7 @@ func (c *clientsOwner) RangeClient() <-chan client {
 	return out
 }
 
-func (c *clientsOwner) UpdatePing(id string) {
+func (c *clientsOwner) UpdatePing(id int) {
 	c.updatePingChan <- id
 }
 

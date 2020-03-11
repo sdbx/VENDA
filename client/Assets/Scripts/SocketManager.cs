@@ -6,6 +6,23 @@ using Amguna;
 using UnityEngine.Networking;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using Google.Protobuf;
+
+static class EventByte {
+    public const byte Info = 0x01;
+    public const byte UserData = 0x02;
+    public const byte MyData = 0x03;
+    public const byte Hit = 0x04;
+    public const byte Death = 0x05;
+    public const byte Animate = 0x06;
+
+    // public const byte Disconnected = 0x07;
+
+    public const byte Connected = 0xF1;
+
+    public const byte Disconnected = 0xF2;
+    
+}
 
 public class SocketManager : MonoBehaviour
 {
@@ -21,8 +38,8 @@ public class SocketManager : MonoBehaviour
     [SerializeField]
     private MapManager _mapManager;
     public EventSocket socket = null;
-    private string id;
-    public Dictionary<string, Character> characterList = new Dictionary<string, Character>();
+    private int id;
+    public Dictionary<int, Character> characterList = new Dictionary<int, Character>();
     [SerializeField]
     private CameraEffect _cameraEffect;
 
@@ -103,21 +120,16 @@ public class SocketManager : MonoBehaviour
             Destroy(nameSetter);
         }
 
-        socket.On("connected", (s) =>
+        socket.OnConnect += (id) =>
         {
+            Debug.Log("connected!!!");
             connected = true;
-        });
+        };
 
-        socket.On("reconnect", (s) =>
-        {
-            Debug.Log("Hello, Again! ");
-        });
-
-        socket.On("userData", (data) =>
+        socket.On(EventByte.UserData, (data) =>
         {
             var time = Time.time;
             var ping  = (time-_pingTime)*1000;
-
             if(_maxPing<ping)
                 _maxPing = ping;
 
@@ -131,18 +143,18 @@ public class SocketManager : MonoBehaviour
         
             fps._maxPing = _maxPing;
 
-            var userDatas = JsonConvert.DeserializeObject<Dictionary<string,CharacterData>>(data);
-            foreach(var userData in userDatas)
+            var userDatas = UserDataEvent.Parser.ParseFrom(data);
+            foreach(var user in userDatas.Users)
             {
-                ProcessUserdata(userData.Value);
+                ProcessUserdata(user);
             }
         });
 
-        socket.On("info", (string data) =>
+        socket.On(EventByte.Info, (byte[] data) =>
         {
-
-            id = (string)JObject.Parse(data)["id"];
-            var name_ = (string)JObject.Parse(data)["name"];
+            var info = InfoEvent.Parser.ParseFrom(data);
+            id = info.Id;
+            var name_ = info.Name;
             Debug.Log("START:"+name_);
             if (_preSettedName != "")
                 name_ = _preSettedName;
@@ -151,45 +163,36 @@ public class SocketManager : MonoBehaviour
             player.gameObject.SetActive(true);
         });
 
-        socket.On("hit", (string data) =>
+        socket.On(EventByte.Hit, (byte[] data) =>
         {
-            int dmg = (int)JObject.Parse(data)["dmg"];
-            string hitter = (string)JObject.Parse(data)["id"];
+            var hit = HitEvent.Parser.ParseFrom(data);
+            var dmg = (int)hit.Dmg;
+            var hitter = hit.Id;
             player.GetDmg(dmg, hitter);
-            if(hitter == id)
-            {
-                player.Heal(5);
-            }
-            
         });
 
-        socket.On("animate", (string data) =>
+        socket.On(EventByte.Animate, (byte[] data) =>
         {
-            string id_ = (string)JObject.Parse(data)["id"];
-            int animeId = (int)JObject.Parse(data)["animeId"];
+            var animate = AnimateEvent.Parser.ParseFrom(data);
+            var id_ = animate.Id;
+            var animeId = animate.Anime;
             if (id_ != id)
             {
                 characterList[id_].PlayAnimation((aniType)animeId);
             }
         });
 
-        socket.On("delPlayer", (string data) =>
+        socket.OnDisconnect += id_ =>
         {
-            string id_ = (string)JObject.Parse(data)["id"];
             Destroy(characterList[id_].gameObject);
             characterList.Remove(id_);
-        });
+        };
 
-        socket.On("ping", (string data) =>
+        socket.On(EventByte.Death, (byte[] data) =>
         {
-            socket.Emit("pong", data);
-        });
-
-        socket.On("death", (string data) =>
-        {
-            Debug.Log(data);
-            string id_ = (string)JObject.Parse(data)["id"];
-            string by_ = (string)JObject.Parse(data)["by"];
+            var death = DeathEvent.Parser.ParseFrom(data);
+            int id_ = death.Id;
+            int by_ = death.By;
             Character deathChar;
             if (id == id_) {
                  _killCounter.ResetCount();
@@ -222,18 +225,16 @@ public class SocketManager : MonoBehaviour
 
     void ProcessUserdata(CharacterData userData)
     {
-        if (userData.id == id)
+        if (userData.Id == id)
             return;
-
-
-        if (!characterList.ContainsKey(userData.id))
+        if (!characterList.ContainsKey(userData.Id))
         {
             var newChar = Instantiate<Character>(prefab);
-            characterList.Add(userData.id, newChar);
+            characterList.Add(userData.Id, newChar);
         }
 
-        Character cha = characterList[userData.id];
-        if (userData.dead)
+        Character cha = characterList[userData.Id];
+        if (userData.Dead)
         {
             cha.gameObject.SetActive(false);
         }
@@ -241,12 +242,14 @@ public class SocketManager : MonoBehaviour
     }
     void Update()
     {
-        if(socket!=null)
+        if(socket!=null) {
             socket.Update();
+        }
+            
 
         if (connected)
         {
-            socket.Emit("myData", JsonConvert.SerializeObject(player.GetData()));
+            socket.Emit(EventByte.MyData, new MyDataEvent { Data = player.GetData() }.ToByteArray());
         }
     }
 

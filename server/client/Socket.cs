@@ -20,7 +20,7 @@ namespace Amguna {
         public string msg; 
     }  
 
-    class EventSocket {
+    public class EventSocket {
         private ConcurrentQueue<ReceivedEventArgs> queue = new ConcurrentQueue<ReceivedEventArgs>();
         private UdpClient _client;
         private IPEndPoint _remoteEP;
@@ -56,6 +56,7 @@ namespace Amguna {
             _addr = addr;
             _remoteEP = CreateIPEndPoint(_addr);
             _client = new UdpClient();
+            _client.Client.ReceiveBufferSize = 1024;
             _connect();
 
             _th = new Thread(Receive);
@@ -82,6 +83,11 @@ namespace Amguna {
                 
             }
         }
+        
+        public void Disconnect() {
+            byte[] byteData = Combine(new byte[] {0x03}, _secret);
+            _client.Send(byteData, byteData.Length, _remoteEP);
+        }
 
         private void SendHandshake() {
             byte[] byteData = new byte[] {0x01};
@@ -90,7 +96,7 @@ namespace Amguna {
 
         private byte[] Combine(byte[] first, byte[] second)
         {
-            byte[] ret = new byte[first.Length + second.Length];
+            byte[] ret = new byte[first.Length + second.Length];    
             Buffer.BlockCopy(first, 0, ret, 0, first.Length);
             Buffer.BlockCopy(second, 0, ret, first.Length, second.Length);
             return ret;
@@ -98,6 +104,7 @@ namespace Amguna {
 
 
         public void Emit(string eventName, string data) {
+
             if (_id != null) {
                 byte[] byteData = Combine(Combine(new byte[] {0x02}, _secret), Encoding.UTF8.GetBytes(eventName + ":" + data));
                 _client.Send(byteData, byteData.Length, _remoteEP);
@@ -116,12 +123,14 @@ namespace Amguna {
                     _secret = System.Convert.FromBase64String(payload["secret"]);
                     Log($"CONNECTED as {_id}");
                 }
+                Log(data["event"]);
 
                 if ( _handlers.ContainsKey(data["event"])) {
                     _handlers[data["event"]](data["payload"]);
                 }
             } catch (Exception e) {
                 Log($"ERROR {e.ToString()} ");
+                Log(eventArgs.msg);
             }
         }
 
